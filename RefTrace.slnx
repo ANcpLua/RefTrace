@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RefTrace.Assets/RefTrace.Assets.csproj" />
+    <Project Path="src/RefTrace.Build/RefTrace.Build.csproj" />
+    <Project Path="src/RefTrace.Cli/RefTrace.Cli.csproj" />
+    <Project Path="src/RefTrace.Core/RefTrace.Core.csproj" />
+    <Project Path="src/RefTrace.Metadata/RefTrace.Metadata.csproj" />
+    <Project Path="src/RefTrace.Model/RefTrace.Model.csproj" />
+    <Project Path="src/RefTrace.Runtime/RefTrace.Runtime.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RefTrace.RuntimeFixture/RefTrace.RuntimeFixture.csproj" />
+    <Project Path="tests/RefTrace.Tests/RefTrace.Tests.csproj" />
+  </Folder>
+</Solution>

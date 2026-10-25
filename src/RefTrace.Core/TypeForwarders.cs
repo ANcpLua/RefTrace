@@ -1,0 +1,19 @@
+using System.Runtime.CompilerServices;
+using RefTrace.Core;
+
+[assembly: TypeForwardedTo(typeof(DependencyNode))]
+[assembly: TypeForwardedTo(typeof(DependencyEdge))]
+[assembly: TypeForwardedTo(typeof(DependencyGraph))]
+[assembly: TypeForwardedTo(typeof(DependencyTrace))]
+[assembly: TypeForwardedTo(typeof(PolicyViolation))]
+[assembly: TypeForwardedTo(typeof(PolicyReport))]
+[assembly: TypeForwardedTo(typeof(AssemblyIdentity))]
+[assembly: TypeForwardedTo(typeof(ApiMember))]
+[assembly: TypeForwardedTo(typeof(ApiType))]
+[assembly: TypeForwardedTo(typeof(AssemblyReport))]
+[assembly: TypeForwardedTo(typeof(InspectionException))]
+[assembly: TypeForwardedTo(typeof(GraphQueries))]
+[assembly: TypeForwardedTo(typeof(AssetsInspector))]
+[assembly: TypeForwardedTo(typeof(AssemblyInspector))]
+[assembly: TypeForwardedTo(typeof(SdkReport))]
+[assembly: TypeForwardedTo(typeof(SdkInspector))]

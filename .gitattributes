@@ -1,0 +1,12 @@
+* text=auto eol=lf
+*.slnx text eol=lf
+*.cs text diff=csharp
+*.png binary
+*.jpg binary
+*.ico binary
+*.dll binary
+*.pdb binary
+*.nupkg binary
+*.snupkg binary
+*.binlog binary
+licenses/** -text -whitespace

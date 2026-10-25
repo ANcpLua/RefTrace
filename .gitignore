@@ -1,0 +1,17 @@
+artifacts/
+**/bin/
+**/obj/
+TestResults/
+.idea/
+.vs/
+.DS_Store
+*.user
+*.suo
+*.binlog
+*.nupkg
+*.snupkg
+*.trx
+*.dmp
+.env
+.env.*
+!.env.example

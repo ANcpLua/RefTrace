@@ -1,0 +1,37 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Build
+        run: dotnet build RefTrace.slnx --configuration Release "-bl:artifacts/build-{}.binlog"
+      - name: Test
+        run: dotnet test --solution RefTrace.slnx --configuration Release --no-build --report-trx --results-directory artifacts/test-results "-bl:artifacts/test-{}.binlog"
+      - name: Pack
+        run: dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj --configuration Release --no-build --no-restore --output artifacts/packages "-bl:artifacts/pack-{}.binlog"
+      - name: Try the packaged command
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(dotnet msbuild src/RefTrace.Cli/RefTrace.Cli.csproj -getProperty:Version -nologo)
+          dotnet tool install RefTrace --version "$version" --add-source artifacts/packages --tool-path artifacts/smoke
+          command=./artifacts/smoke/reftrace
+          if [[ "$RUNNER_OS" == Windows ]]; then command+=.exe; fi
+          "$command" --help

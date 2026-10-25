@@ -1,0 +1,81 @@
+name: Publish RefTrace
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Package version already set in Directory.Build.props
+        required: true
+        type: string
+        default: "0.3.0"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reftrace-nuget-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      NUGET_USER: ${{ secrets.NUGET_USER }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Check release inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$NUGET_USER" ]]; then
+            echo "Set NUGET_USER in the release environment to your NuGet profile name."
+            exit 1
+          fi
+          project_version=$(dotnet msbuild src/RefTrace.Cli/RefTrace.Cli.csproj -getProperty:Version -nologo)
+          if [[ "$project_version" != "$RELEASE_VERSION" ]]; then
+            echo "The requested version must match Directory.Build.props."
+            exit 1
+          fi
+
+      - name: Build
+        run: dotnet build RefTrace.slnx --configuration Release "-bl:artifacts/build-{}.binlog"
+
+      - name: Test
+        run: dotnet test --solution RefTrace.slnx --configuration Release --no-build "-bl:artifacts/test-{}.binlog"
+
+      - name: Pack
+        run: dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj --configuration Release --no-build --no-restore --output artifacts/packages "-bl:artifacts/pack-{}.binlog"
+
+      - name: Try the packaged command
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet tool install RefTrace --version "$RELEASE_VERSION" --add-source artifacts/packages --tool-path artifacts/publish-smoke
+          ./artifacts/publish-smoke/reftrace --help
+
+      - name: NuGet login with OIDC
+        id: login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Publish package
+        shell: bash
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: |
+          set -euo pipefail
+          dotnet nuget push "artifacts/packages/RefTrace.$RELEASE_VERSION.nupkg" \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "$NUGET_API_KEY" \
+            --skip-duplicate
