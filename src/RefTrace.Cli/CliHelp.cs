@@ -64,7 +64,7 @@ internal static class CliHelp
         WriteRows(command.Options.Concat(root.Options.Where(option => option.Recursive)).Distinct()
             .Where(option => !option.Hidden).Select(option =>
                 (string.Join(", ", new[] { option.Name }.Concat(option.Aliases))
-                 + (option.Arity.MaximumNumberOfValues > 0 ? " <value>" : "")
+                 + (option.Arity.MinimumNumberOfValues > 0 ? " <value>" : "")
                  + (option.Required ? " (required)" : ""), option.Description ?? "")), output);
         if (command.Subcommands.Count == 0) return;
         output.WriteLine();

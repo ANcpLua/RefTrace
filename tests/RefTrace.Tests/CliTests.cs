@@ -92,6 +92,8 @@ public sealed class CliTests(TestContext context)
         var commandHelp = Run("assembly", "--help");
         Assert.AreEqual(0, commandHelp.Exit);
         Assert.Contains("--type", commandHelp.Output);
+        Assert.DoesNotContain("--json <value>", commandHelp.Output);
+        Assert.DoesNotContain("--plain <value>", commandHelp.Output);
     }
 
     [TestMethod]
