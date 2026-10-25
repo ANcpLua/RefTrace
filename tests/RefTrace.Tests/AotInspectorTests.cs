@@ -1,4 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RefTrace.Metadata;
 using RefTrace.Core;
 
@@ -24,10 +23,10 @@ public sealed class AotInspectorTests
     public void Read_RequiresAnnotations_PreservesContractAndMessage()
     {
         var report = AotInspector.Read(typeof(ReflectionSamples).Assembly.Location);
-        var dynamic = report.Annotations.Single(a => a.Owner.EndsWith("ReflectionSamples.DynamicContract", StringComparison.Ordinal));
+        var dynamic = report.Annotations.Single(a => a.Owner.EndsWith($"{nameof(ReflectionSamples)}.{nameof(ReflectionSamples.DynamicContract)}", StringComparison.Ordinal));
         Assert.AreEqual("System.Diagnostics.CodeAnalysis.RequiresDynamicCodeAttribute", dynamic.Attribute);
         Assert.AreEqual("A fixture requiring runtime code generation.", dynamic.Arguments.Single());
-        Assert.IsTrue(report.Annotations.Any(a => a.Owner.EndsWith("ReflectionSamples.TrimmingContract", StringComparison.Ordinal)
+        Assert.IsTrue(report.Annotations.Any(a => a.Owner.EndsWith($"{nameof(ReflectionSamples)}.{nameof(ReflectionSamples.TrimmingContract)}", StringComparison.Ordinal)
             && a.Attribute.EndsWith("RequiresUnreferencedCodeAttribute", StringComparison.Ordinal)));
         Assert.IsNull(report.DeclaredAotCompatible);
     }
@@ -35,8 +34,11 @@ public sealed class AotInspectorTests
     [TestMethod]
     public void Read_NativeOrInvalidData_DoesNotImplyCompatibility()
     {
-        using var image = new MemoryStream(new byte[32]);
-        Assert.ThrowsExactly<InspectionException>(() => AotInspector.Read(image, "native.bin"));
+        Assert.ThrowsExactly<InspectionException>(() =>
+        {
+            using var image = new MemoryStream(new byte[32]);
+            AotInspector.Read(image, "native.bin");
+        });
     }
 
     [TestMethod]

@@ -8,23 +8,29 @@ to draw a conclusion.
 
 Requires .NET 10.
 
-## Try it
+## Install
 
-From this directory, run any command through the project:
+The first NuGet release is pending. Install the current source with the .NET 10 SDK:
 
 ```sh
-dotnet run --project src/RefTrace.Cli -- --help
+dotnet pack src/RefTrace.Cli -c Release -o artifacts/packages
+dotnet tool install --global RefTrace --version 0.4.0 --add-source artifacts/packages
+ref help
 ```
 
-The examples below use `reftrace`, the command installed by the tool package.
-See [local installation](#build-and-install-locally) if you are working from this checkout.
+After publication, install with `dotnet tool install --global RefTrace`.
+The package is named **RefTrace**; the command is **ref**.
+For an existing installation, replace `install` with `update`.
+
+`ref help` gives a short overview. Use `ref help assembly` or `ref assembly --help`
+for a command's arguments and options.
 
 ## Find a dependency
 
 ```sh
-reftrace packages obj/project.assets.json
-reftrace why obj/project.assets.json Some.Package
-reftrace check obj/project.assets.json --forbid-package 'Unwanted.*'
+ref packages obj/project.assets.json
+ref why obj/project.assets.json Some.Package
+ref check obj/project.assets.json --forbid-package 'Unwanted.*'
 ```
 
 `project.assets.json` is created when your project is restored. If it contains more than
@@ -36,9 +42,9 @@ use `--forbid-project '*Other.Tests.csproj'`. Quote patterns so your shell passe
 ## Look inside a DLL
 
 ```sh
-reftrace assembly MyLibrary.dll
-reftrace assembly MyLibrary.dll --type 'MyNamespace.MyType'
-reftrace reflection MyLibrary.dll
+ref assembly MyLibrary.dll
+ref assembly MyLibrary.dll --type 'MyNamespace.MyType'
+ref reflection MyLibrary.dll
 ```
 
 `assembly` shows versions, references, and other recorded details. `reflection` shows
@@ -48,8 +54,8 @@ mean it ran. Neither command executes code from the DLL.
 ## Watch a running app
 
 ```sh
-reftrace processes
-reftrace runtime --pid 12345 --seconds 1 --modules
+ref processes
+ref runtime --pid 12345 --seconds 1 --modules
 ```
 
 Choose a PID from the first command. The second shows assemblies observed in that process
@@ -59,8 +65,8 @@ It cannot tell you what the app will load later.
 ## Check Native AOT
 
 ```sh
-reftrace aot inspect MyLibrary.dll
-reftrace aot publish MyApp.csproj --rid osx-arm64 --output artifacts/aot-check
+ref aot inspect MyLibrary.dll
+ref aot publish MyApp.csproj --rid osx-arm64 --output artifacts/aot-check
 ```
 
 `inspect` gives you things to review. `publish` tries a real Native AOT build and saves
@@ -70,7 +76,7 @@ anything to NuGet. For a multi-targeted project, add `--framework net10.0`.
 To see which compiler and native CLI files an installed SDK contains:
 
 ```sh
-reftrace sdk /path/to/sdk-version
+ref sdk /path/to/sdk-version
 ```
 
 ## Use it in scripts
@@ -86,26 +92,6 @@ uses tables and trees.
 
 A successful inspection means it read the input successfully. It is not a blanket claim
 that the app is safe or AOT-compatible.
-
-## Build and install locally
-
-Run these from the repository root to try the local preview. No NuGet account or
-API key is needed; the package stays on your machine.
-
-```sh
-dotnet build RefTrace.slnx -c Release
-dotnet test --solution RefTrace.slnx -c Release --no-build
-dotnet pack src/RefTrace.Cli -c Release -p:Version=0.3.0-rc.1 -o artifacts/preview/packages
-dotnet tool install RefTrace --version 0.3.0-rc.1 --add-source artifacts/preview/packages --tool-path artifacts/preview/bin
-export PATH="$PWD/artifacts/preview/bin:$PATH"
-reftrace --help
-```
-
-The `export` command is for macOS and Linux and affects only this terminal session.
-In PowerShell, use `$env:PATH = "$PWD/artifacts/preview/bin;$env:PATH"` instead.
-If the tool is already installed in that folder, use `dotnet tool update` instead of
-`install`. Reusing a version does not guarantee that a tool cache picks up a rebuilt
-package: use a new preview version when testing changes.
 
 For report formats, exact limits, and release steps, see the [technical reference](docs/REFERENCE.md).
 For the code layout and design decisions, see [architecture](ARCHITECTURE.md).

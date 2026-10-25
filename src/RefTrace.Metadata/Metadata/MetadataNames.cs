@@ -5,7 +5,7 @@ namespace RefTrace.Metadata;
 
 internal sealed class MetadataNames(MetadataReader reader) : ISignatureTypeProvider<string, object?>
 {
-    public string Type(EntityHandle handle) => handle.Kind switch
+    private string Type(EntityHandle handle) => handle.Kind switch
     {
         HandleKind.TypeDefinition => GetTypeFromDefinition(reader, (TypeDefinitionHandle)handle, 0),
         HandleKind.TypeReference => GetTypeFromReference(reader, (TypeReferenceHandle)handle, 0),
@@ -30,7 +30,7 @@ internal sealed class MetadataNames(MetadataReader reader) : ISignatureTypeProvi
         throw new BadImageFormatException("A method instruction has an invalid metadata token.");
     }
 
-    public string Scope(EntityHandle handle)
+    private string Scope(EntityHandle handle)
     {
         if (handle.Kind == HandleKind.TypeReference)
         {

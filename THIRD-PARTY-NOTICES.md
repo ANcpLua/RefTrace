@@ -2,7 +2,7 @@
 
 RefTrace's own code is licensed under MIT. The tool also distributes the runtime
 components below, which retain their original licenses and copyright notices.
-This inventory is for RefTrace 0.3.0 and includes transitive runtime dependencies.
+This inventory is for RefTrace 0.4.0 and includes transitive runtime dependencies.
 Build and test tools are not redistributed in the tool package.
 
 | Package | Version | License | Copyright recorded by the package |

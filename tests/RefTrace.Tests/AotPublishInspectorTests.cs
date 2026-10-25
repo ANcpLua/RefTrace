@@ -1,4 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RefTrace.Build;
 using RefTrace.Core;
 
@@ -38,7 +37,7 @@ public sealed class AotPublishInspectorTests(TestContext context)
     public async Task Run_PreCancelled_DoesNotCreateOutput()
     {
         using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
         var output = Path.Combine(context.TestTempDirectory!, "not-created");
         await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => AotPublishInspector.RunAsync(
             "unused.csproj", "osx-arm64", output, TimeSpan.FromSeconds(1), cancellationToken: cancellation.Token));

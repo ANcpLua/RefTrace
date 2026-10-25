@@ -1,4 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RefTrace.Core;
 
 namespace RefTrace.Tests;
@@ -18,13 +17,15 @@ public sealed class GraphQueriesTests
     public void Explain_CycleAndShorterRoute_TerminatesWithShortestPath()
     {
         var graph = Fixtures.Read();
-        graph = graph with { Edges = graph.Edges.Concat(new[]
-        {
+        graph = graph with { Edges =
+        [
+            .. graph.Edges,
             new DependencyEdge("Beta", "Alpha", "2.0.0"),
             new DependencyEdge(graph.RootId, "Beta", "3.0.0")
-        }).ToArray() };
+        ] };
         var trace = GraphQueries.Explain(graph, "Beta");
-        CollectionAssert.AreEqual(new[] { "$project", "Beta" }, trace.Path.Select(n => n.Id).ToArray());
+        string[] expected = ["$project", "Beta"];
+        CollectionAssert.AreEqual(expected, trace.Path.Select(n => n.Id).ToArray());
     }
 
     [TestMethod]

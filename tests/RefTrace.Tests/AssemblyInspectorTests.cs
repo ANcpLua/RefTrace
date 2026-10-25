@@ -1,4 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RefTrace.Core;
 using System.Reflection;
 using System.Reflection.Metadata;
@@ -15,10 +14,10 @@ public sealed class AssemblyInspectorTests
     {
         var report = AssemblyInspector.Read(typeof(AssemblyInspector).Assembly.Location);
         Assert.AreEqual("RefTrace.Metadata", report.Identity.Name);
-        Assert.AreEqual("0.3.0.0", report.Identity.Version);
+        Assert.AreEqual("0.4.0.0", report.Identity.Version);
         Assert.AreEqual(".NETCoreApp,Version=v10.0", report.TargetFramework);
-        Assert.AreEqual("0.3.0.0", report.FileVersion);
-        Assert.StartsWith("0.3.0", report.InformationalVersion!);
+        Assert.AreEqual("0.4.0.0", report.FileVersion);
+        Assert.StartsWith("0.4.0", report.InformationalVersion!);
         Assert.IsNull(report.Identity.PublicKeyToken);
         Assert.IsFalse(report.IsReferenceAssembly);
         Assert.IsTrue(Guid.TryParse(report.ModuleVersionId, out _));
@@ -31,9 +30,9 @@ public sealed class AssemblyInspectorTests
     {
         var report = AssemblyInspector.Read(typeof(ApiFixture).Assembly.Location, "RefTrace.Tests.ApiFixture*");
         var type = report.Types.Single(t => t.Name == "RefTrace.Tests.ApiFixture");
-        Assert.Contains(new ApiMember("Dangerous", "property", true), type.Members);
-        Assert.IsFalse(type.Members.Any(m => m.Name == "Hidden"));
-        Assert.Contains("RefTrace.Tests.ApiFixture+Nested", report.Types.Select(t => t.Name));
+        Assert.Contains(new ApiMember(nameof(ApiFixture.Dangerous), "property", true), type.Members);
+        Assert.IsFalse(type.Members.Any(m => m.Name == nameof(ApiFixture.Hidden)));
+        Assert.Contains($"{typeof(ApiFixture).FullName}+{nameof(ApiFixture.Nested)}", report.Types.Select(t => t.Name));
         Assert.IsFalse(report.Types.Any(t => t.Name.Contains("PrivateNested", StringComparison.Ordinal)));
     }
 
@@ -74,8 +73,11 @@ public sealed class AssemblyInspectorTests
     [TestMethod]
     public void Read_NonManagedData_IsRejected()
     {
-        using var stream = new MemoryStream(new byte[32]);
-        Assert.ThrowsExactly<InspectionException>(() => AssemblyInspector.Read(stream, "invalid.dll"));
+        Assert.ThrowsExactly<InspectionException>(() =>
+        {
+            using var stream = new MemoryStream(new byte[32]);
+            AssemblyInspector.Read(stream, "invalid.dll");
+        });
     }
 
     [TestMethod]
@@ -107,11 +109,12 @@ public sealed class AssemblyInspectorTests
     }
 }
 
+// Members and nested types are metadata fixtures, including deliberately hidden ones.
 public sealed class ApiFixture
 {
-    static ApiFixture() => throw new InvalidOperationException("Must never execute during metadata inspection.");
+    static ApiFixture() => throw new InvalidOperationException($"Must never execute during metadata inspection: {nameof(PrivateNested)}.");
     public static string Dangerous => throw new InvalidOperationException("Must never invoke getters.");
     internal static string Hidden => "hidden";
-    public sealed class Nested;
-    private sealed class PrivateNested;
+    public static class Nested;
+    private static class PrivateNested;
 }

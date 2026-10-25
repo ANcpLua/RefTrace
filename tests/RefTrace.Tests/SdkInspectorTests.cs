@@ -1,4 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RefTrace.Core;
 
 namespace RefTrace.Tests;

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RefTrace.Runtime;
 using Spectre.Console;
 
@@ -58,7 +57,7 @@ public sealed class RuntimeInspectorTests(TestContext context)
     [Timeout(30000, CooperativeCancellation = true)]
     public async Task Capture_ControlledProcess_EnumeratesExistingAssembliesWithoutObserverDependencies()
     {
-        using var observerOutput = new StringWriter();
+        await using var observerOutput = new StringWriter();
         AnsiConsole.Create(new AnsiConsoleSettings { Out = new AnsiConsoleOutput(observerOutput) }).Write(new Text("observer"));
         var configuration = new DirectoryInfo(AppContext.BaseDirectory).Name;
         var fixture = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..",

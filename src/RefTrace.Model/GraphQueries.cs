@@ -58,7 +58,7 @@ public static class GraphQueries
             foreach (var pattern in patterns)
             {
                 var matches = FileSystemName.MatchesSimpleExpression(pattern, node.Id, ignoreCase: true);
-                if (!matches && node.Kind == "project" && node.ProjectPath is not null)
+                if (!matches && node is { Kind: "project", ProjectPath: not null })
                     matches = FileSystemName.MatchesSimpleExpression(pattern.Replace('\\', '/'),
                         node.ProjectPath.Replace('\\', '/'), ignoreCase: OperatingSystem.IsWindows());
                 if (matches)

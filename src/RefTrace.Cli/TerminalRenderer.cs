@@ -93,7 +93,7 @@ internal static class TerminalRenderer
                 foreach (var process in processes.Processes)
                     processTable.AddRow(Text(process.ProcessId.ToString(CultureInfo.InvariantCulture)), Text(process.Name), Text(".NET diagnostic port"));
                 console.Write(processTable);
-                Note(console, "Choose a PID with: reftrace runtime --pid <PID>");
+                Note(console, "Choose a PID with: ref runtime --pid <PID>");
                 break;
             case RuntimeReport runtime:
                 Evidence(console, $"PID {runtime.ProcessId} · {runtime.ProcessName}", runtime.Mechanism);
@@ -182,7 +182,7 @@ internal static class TerminalRenderer
 
     private static IAnsiConsole Create(TextWriter writer)
     {
-        var terminal = ReferenceEquals(writer, System.Console.Out) && !System.Console.IsOutputRedirected
+        var terminal = ReferenceEquals(writer, Console.Out) && !Console.IsOutputRedirected
             && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NO_COLOR"));
         var console = AnsiConsole.Create(new AnsiConsoleSettings
         {

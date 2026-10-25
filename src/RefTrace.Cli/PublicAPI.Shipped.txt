@@ -1,4 +1,0 @@
-#nullable enable
-RefTrace.Cli.CliApplication
-static RefTrace.Cli.CliApplication.Run(string![]! args, System.IO.TextWriter! output, System.IO.TextWriter! error) -> int
-static RefTrace.Cli.CliApplication.RunAsync(string![]! args, System.IO.TextWriter! output, System.IO.TextWriter! error, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!

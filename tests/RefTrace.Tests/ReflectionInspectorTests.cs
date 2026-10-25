@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.Loader;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RefTrace.Metadata;
 using System.Reflection.Emit;
 using System.Reflection.Metadata;
@@ -16,24 +15,24 @@ public sealed class ReflectionInspectorTests
     public void Read_FindsCallsWithCallerOffsetCategoryAndAssembly()
     {
         var report = ReflectionInspector.Read(typeof(ReflectionSamples).Assembly.Location);
-        var discovery = report.Findings.Single(f => f.Caller.EndsWith("ReflectionSamples.Discover", StringComparison.Ordinal));
+        var discovery = report.Findings.Single(f => f.Caller.EndsWith($"{nameof(ReflectionSamples)}.{nameof(ReflectionSamples.Discover)}", StringComparison.Ordinal));
         Assert.AreEqual("System.Type", discovery.TargetType);
         Assert.AreEqual("GetType", discovery.TargetMember);
         Assert.AreEqual("reflection-discovery", discovery.Category);
         Assert.AreEqual("System.Runtime", discovery.TargetAssembly);
         Assert.IsGreaterThanOrEqualTo(0, discovery.IlOffset);
         Assert.StartsWith("0x06", discovery.CallerToken);
-        Assert.IsTrue(report.Findings.Any(f => f.Caller.EndsWith("ReflectionSamples.Load", StringComparison.Ordinal)
-            && f.TargetType == "System.Runtime.Loader.AssemblyLoadContext" && f.Category == "assembly-loading"));
+        Assert.IsTrue(report.Findings.Any(f => f.Caller.EndsWith($"{nameof(ReflectionSamples)}.{nameof(ReflectionSamples.Load)}", StringComparison.Ordinal)
+            && f is { TargetType: "System.Runtime.Loader.AssemblyLoadContext", Category: "assembly-loading" }));
     }
 
     [TestMethod]
     public void Read_HandlesGenericMethodsAndGenericDeclaringTypes()
     {
         var report = ReflectionInspector.Read(typeof(ReflectionSamples).Assembly.Location);
-        Assert.IsTrue(report.Findings.Any(f => f.Caller.EndsWith("ReflectionSamples.Activate", StringComparison.Ordinal)
+        Assert.IsTrue(report.Findings.Any(f => f.Caller.EndsWith($"{nameof(ReflectionSamples)}.{nameof(ReflectionSamples.Activate)}", StringComparison.Ordinal)
             && f.TargetMember == "CreateInstance"));
-        Assert.IsTrue(report.Findings.Any(f => f.Caller.EndsWith("ReflectionSamples.CompileExpression", StringComparison.Ordinal)
+        Assert.IsTrue(report.Findings.Any(f => f.Caller.EndsWith($"{nameof(ReflectionSamples)}.{nameof(ReflectionSamples.CompileExpression)}", StringComparison.Ordinal)
             && f.Category == "expression-compilation"));
     }
 
@@ -41,14 +40,19 @@ public sealed class ReflectionInspectorTests
     public void Read_TypeofAndLiteralNames_AreNotReflectionFindings()
     {
         var report = ReflectionInspector.Read(typeof(ReflectionSamples).Assembly.Location);
-        Assert.IsFalse(report.Findings.Any(f => f.Caller.EndsWith("ReflectionSamples.Harmless", StringComparison.Ordinal)));
-        Assert.IsFalse(report.Findings.Any(f => f.Caller.EndsWith("ReflectionSamples.Literal", StringComparison.Ordinal)));
+        Assert.IsFalse(report.Findings.Any(f => f.Caller.EndsWith($"{nameof(ReflectionSamples)}.{nameof(ReflectionSamples.Harmless)}", StringComparison.Ordinal)));
+        Assert.IsFalse(report.Findings.Any(f => f.Caller.EndsWith($"{nameof(ReflectionSamples)}.{nameof(ReflectionSamples.Literal)}", StringComparison.Ordinal)));
     }
 
     [TestMethod]
     public void Read_ConstantOperandContainingCallByte_IsNotAnInstruction()
     {
-        using var image = SafetyPe.Create([0x20, 0x28, 0, 0, 0, 0x26, 0x2a]);
+        var il = new BlobBuilder();
+        il.WriteByte((byte)ILOpCode.Ldc_i4);
+        il.WriteInt32(0x28); // A call byte inside an integer operand is not an instruction.
+        il.WriteByte((byte)ILOpCode.Pop);
+        il.WriteByte((byte)ILOpCode.Ret);
+        using var image = SafetyPe.Create(il.ToArray());
         var report = ReflectionInspector.Read(image, "constant.dll");
         Assert.AreEqual(1, report.MethodBodiesScanned);
         Assert.IsEmpty(report.Findings);
@@ -86,10 +90,9 @@ public sealed class ReflectionInspectorTests
                 OperandType.InlineSwitch => 12,
                 _ => 4
             };
-            if (opcode.OperandType == OperandType.InlineSwitch)
-                bytes.AddRange(new byte[] { 2, 0, 0, 0, 0x28, 0, 0, 0, 0x28, 0, 0, 0 });
-            else
-                bytes.AddRange(Enumerable.Repeat((byte)0x28, length));
+            bytes.AddRange(opcode.OperandType == OperandType.InlineSwitch
+                ? [2, 0, 0, 0, 0x28, 0, 0, 0, 0x28, 0, 0, 0]
+                : Enumerable.Repeat((byte)0x28, length));
             bytes.Add(0x2a);
             using var image = SafetyPe.Create(bytes.ToArray());
             var report = ReflectionInspector.Read(image, "operand.dll");
@@ -103,11 +106,15 @@ public sealed class ReflectionInspectorTests
     [DataRow(new byte[] { 0x45, 0xff, 0xff, 0xff, 0x7f })]
     public void Read_TruncatedIl_IsRejected(byte[] il)
     {
-        using var image = SafetyPe.Create(il);
-        Assert.ThrowsExactly<BadImageFormatException>(() => ReflectionInspector.Read(image, "bad-il.dll"));
+        Assert.ThrowsExactly<BadImageFormatException>(() =>
+        {
+            using var image = SafetyPe.Create(il);
+            ReflectionInspector.Read(image, "bad-il.dll");
+        });
     }
 }
 
+// These methods are read as IL fixtures; invoking them would invalidate the tests.
 public static class ReflectionSamples
 {
     static ReflectionSamples() => throw new InvalidOperationException("Metadata inspection must not execute this type.");

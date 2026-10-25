@@ -54,7 +54,7 @@ public static partial class AotPublishInspector
         using var process = Process.Start(start) ?? throw new InspectionException("The dotnet process could not be started.");
         var stdout = process.StandardOutput.ReadToEndAsync(cancellationToken);
         var stderr = process.StandardError.ReadToEndAsync(cancellationToken);
-        var outcome = "failed";
+        string outcome;
         try
         {
             await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false);
@@ -70,8 +70,8 @@ public static partial class AotPublishInspector
         string text;
         try
         {
-            text = await stdout.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false)
-                + Environment.NewLine + await stderr.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+            text = await stdout.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken.None).ConfigureAwait(false)
+                + Environment.NewLine + await stderr.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken.None).ConfigureAwait(false);
         }
         catch (OperationCanceledException) { text = "Output capture was cancelled."; }
         catch (TimeoutException) { text = "Output capture did not complete."; outcome = "incomplete-output"; }

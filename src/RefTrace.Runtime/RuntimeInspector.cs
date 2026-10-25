@@ -50,7 +50,7 @@ public static class RuntimeInspector
             };
             // Loader-only rundown avoids collecting method/JIT/GC data for this inventory.
             var configuration = new EventPipeSessionConfiguration(providers, 32,
-                (long)(ClrRundownTraceEventParser.Keywords.Loader | ClrRundownTraceEventParser.Keywords.ForceEndRundown),
+                (long)ClrRundownTraceEventParser.Keywords.Loader | (long)ClrRundownTraceEventParser.Keywords.ForceEndRundown,
                 requestStackwalk: false);
             var client = new DiagnosticsClient(processId);
             using var session = await client.StartEventPipeSessionAsync(configuration, deadline.Token).ConfigureAwait(false);
@@ -85,8 +85,8 @@ public static class RuntimeInspector
                 catch (Exception ex) when (ex is DiagnosticsClientException or IOException or OperationCanceledException) { }
                 if (!reading.IsCompleted)
                 {
-                    session.EventStream.Dispose();
-                    try { await reading.WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false); }
+                    await session.EventStream.DisposeAsync().ConfigureAwait(false);
+                    try { await reading.WaitAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false); }
                     catch (Exception ex) when (ex is IOException or ObjectDisposedException or TimeoutException) { }
                 }
             }

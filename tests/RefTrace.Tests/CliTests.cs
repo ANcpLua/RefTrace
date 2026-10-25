@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RefTrace.Cli;
 
 namespace RefTrace.Tests;
@@ -93,6 +92,54 @@ public sealed class CliTests(TestContext context)
         var commandHelp = Run("assembly", "--help");
         Assert.AreEqual(0, commandHelp.Exit);
         Assert.Contains("--type", commandHelp.Output);
+    }
+
+    [TestMethod]
+    [DataRow("help")]
+    [DataRow("--help")]
+    [DataRow("-h")]
+    public void Help_RootForms_ShowTheSameConciseOverview(string argument)
+    {
+        var result = Run(argument);
+        Assert.AreEqual(0, result.Exit);
+        Assert.AreEqual("", result.Error);
+        Assert.AreEqual(Run().Output, result.Output);
+        Assert.Contains("Usage: ref <command>", result.Output);
+        Assert.Contains("Details: ref help <command>", result.Output);
+        Assert.DoesNotContain("RefTrace.Cli", result.Output);
+        Assert.IsLessThanOrEqualTo(20, result.Output.Split('\n').Length);
+    }
+
+    [TestMethod]
+    public void Help_NestedCommand_MatchesOptionAndShowsRequiredArguments()
+    {
+        var result = Run("help", "aot", "publish");
+        Assert.AreEqual(0, result.Exit);
+        Assert.AreEqual("", result.Error);
+        Assert.AreEqual(Run("aot", "publish", "--help").Output, result.Output);
+        Assert.Contains("Usage: ref aot publish <project>", result.Output);
+        Assert.Contains("--rid", result.Output);
+        Assert.Contains("--output", result.Output);
+    }
+
+    [TestMethod]
+    public void Help_UnknownCommand_FailsWithoutRunningAnInspection()
+    {
+        var result = Run("help", "unknown");
+        Assert.AreEqual(2, result.Exit);
+        Assert.AreEqual("", result.Output);
+        Assert.Contains("Unknown command 'unknown'", result.Error);
+    }
+
+    [TestMethod]
+    public void Suggestions_Prefix_ReturnsMatchingCommands()
+    {
+        var result = Run("[suggest]", "ass");
+        Assert.AreEqual(0, result.Exit);
+        Assert.AreEqual("", result.Error);
+        string[] expected = ["assembly", "assets"];
+        CollectionAssert.AreEquivalent(expected,
+            result.Output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries));
     }
 
     [TestMethod]

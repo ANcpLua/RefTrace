@@ -55,7 +55,7 @@ internal static class SafetyPe
             value.WriteSerializedString("IsAotCompatible");
             value.WriteSerializedString(declaredAot.Value.ToString());
             value.WriteUInt16(0);
-            metadata.AddCustomAttribute(claimOnType ? (EntityHandle)definition : assembly, constructor, metadata.GetOrAddBlob(value));
+            metadata.AddCustomAttribute(claimOnType ? definition : assembly, constructor, metadata.GetOrAddBlob(value));
         }
         var debugDirectory = new DebugDirectoryBuilder();
         if (debug) debugDirectory.AddCodeViewEntry("fixture.pdb", new BlobContentId(new Guid("065d9de6-2e90-4b14-9c7e-d2a2b5d04f6b"), 1), 0x0100);

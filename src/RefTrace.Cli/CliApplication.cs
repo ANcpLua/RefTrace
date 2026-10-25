@@ -1,6 +1,5 @@
 using System.CommandLine;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using RefTrace.Core;
 using RefTrace.Runtime;
 using RefTrace.Metadata;
@@ -16,13 +15,13 @@ public static class CliApplication
     public static async Task<int> RunAsync(string[] args, TextWriter output, TextWriter error,
         CancellationToken cancellationToken = default)
     {
-        var root = new RootCommand("Trace restored .NET dependencies and inspect static assembly metadata.");
-        var json = new Option<bool>("--json") { Description = "Write a schema-versioned JSON report.", Recursive = true };
+        var root = new RootCommand("Trace .NET dependencies and assemblies.");
+        var json = new Option<bool>("--json") { Description = "Write JSON.", Recursive = true };
         root.Options.Add(json);
-        var plain = new Option<bool>("--plain") { Description = "Write plain text without tables, colors or markup.", Recursive = true };
+        var plain = new Option<bool>("--plain") { Description = "Write plain text.", Recursive = true };
         root.Options.Add(plain);
 
-        var (assets, assetsFile, assetsTarget) = GraphCommand("assets", "Show the resolved dependency graph for one restored target.");
+        var (assets, assetsFile, assetsTarget) = GraphCommand("assets", "Show the dependency graph.");
         assets.SetAction(parse => Execute(parse.GetValue(json), "assets", () =>
         {
             var graph = AssetsInspector.Read(parse.GetValue(assetsFile)!, parse.GetValue(assetsTarget));
@@ -30,7 +29,7 @@ public static class CliApplication
         }, output, error, parse.GetValue(plain)));
         root.Subcommands.Add(assets);
 
-        var (packagesCommand, packagesFile, packagesTarget) = GraphCommand("packages", "List resolved NuGet packages and their direct or transitive origin.");
+        var (packagesCommand, packagesFile, packagesTarget) = GraphCommand("packages", "List resolved packages.");
         packagesCommand.SetAction(parse => Execute(parse.GetValue(json), "packages", () =>
         {
             var graph = AssetsInspector.Read(parse.GetValue(packagesFile)!, parse.GetValue(packagesTarget));
@@ -43,7 +42,7 @@ public static class CliApplication
         }, output, error, parse.GetValue(plain)));
         root.Subcommands.Add(packagesCommand);
 
-        var (why, whyFile, whyTarget) = GraphCommand("why", "Show one shortest dependency path from the project to a library ID.");
+        var (why, whyFile, whyTarget) = GraphCommand("why", "Explain a dependency.");
         var dependency = new Argument<string>("dependency") { Description = "Exact package or project library ID (case-insensitive)." };
         why.Arguments.Add(dependency);
         why.SetAction(parse => Execute(parse.GetValue(json), "why", () =>
@@ -55,7 +54,7 @@ public static class CliApplication
         }, output, error, parse.GetValue(plain)));
         root.Subcommands.Add(why);
 
-        var (check, checkFile, checkTarget) = GraphCommand("check", "Reject forbidden package or project dependencies, including transitive dependencies.");
+        var (check, checkFile, checkTarget) = GraphCommand("check", "Check forbidden dependencies.");
         var packages = new Option<string[]>("--forbid-package")
         {
             Description = "Forbidden package ID glob; repeat for multiple patterns. Supports * and ?.",
@@ -79,7 +78,7 @@ public static class CliApplication
         }, output, error, parse.GetValue(plain)));
         root.Subcommands.Add(check);
 
-        var assembly = new Command("assembly", "Read PE/ECMA-335 metadata without loading or executing the target assembly.");
+        var assembly = new Command("assembly", "Inspect a DLL or EXE.");
         var assemblyFile = new Argument<string>("file") { Description = "Path to a managed DLL or EXE." };
         var type = new Option<string>("--type") { Description = "Public type metadata-name glob; use + for nested types and `N for generic arity." };
         assembly.Arguments.Add(assemblyFile);
@@ -91,7 +90,7 @@ public static class CliApplication
         }, output, error, parse.GetValue(plain)));
         root.Subcommands.Add(assembly);
 
-        var reflection = new Command("reflection", "Find catalogued reflection/dynamic-code method references in managed IL.");
+        var reflection = new Command("reflection", "Find reflection and dynamic-code calls.");
         var reflectionFile = new Argument<string>("file") { Description = "Managed implementation DLL or EXE." };
         var failOnFindings = new Option<bool>("--fail-on-findings") { Description = "Return exit 1 when catalogued method references exist; this is a policy, not an AOT verdict." };
         reflection.Arguments.Add(reflectionFile);
@@ -105,7 +104,7 @@ public static class CliApplication
         }, output, error, parse.GetValue(plain)));
         root.Subcommands.Add(reflection);
 
-        var aot = new Command("aot", "Inspect static AOT evidence or explicitly run a Native AOT publish audit.");
+        var aot = new Command("aot", "Inspect or try Native AOT.");
         var aotInspect = new Command("inspect", "Read compatibility declarations, code format and static reflection evidence. Does not establish AOT compatibility.");
         var aotFile = new Argument<string>("file") { Description = "Managed implementation DLL or EXE." };
         aotInspect.Arguments.Add(aotFile);
@@ -139,7 +138,7 @@ public static class CliApplication
                     parse.GetValue(publishOutput)!, TimeSpan.FromSeconds(parse.GetValue(publishTimeout)),
                     parse.GetValue(dotnet)!, token, parse.GetValue(publishFramework)).ConfigureAwait(false);
                 if (parse.GetValue(json)) WriteJson(output, "aot-publish", report);
-                else if (parse.GetValue(plain)) output.WriteLine($"Publish: {report.Outcome}; exit code: {report.ExitCode}; log: {report.LogPath}");
+                else if (parse.GetValue(plain)) await output.WriteLineAsync($"Publish: {report.Outcome}; exit code: {report.ExitCode}; log: {report.LogPath}").ConfigureAwait(false);
                 else TerminalRenderer.Render("aot-publish", report, output);
                 return report.Outcome switch { "succeeded" => 0, "failed" => 1, _ => 2 };
             }
@@ -155,7 +154,7 @@ public static class CliApplication
         aot.Subcommands.Add(publish);
         root.Subcommands.Add(aot);
 
-        var sdk = new Command("sdk", "Inspect an installed SDK directory for native CLI payloads and Roslyn versions.");
+        var sdk = new Command("sdk", "Inspect an installed SDK.");
         var sdkDirectory = new Argument<string>("directory") { Description = "SDK version directory, for example /usr/local/share/dotnet/sdk/11.0.100-rc.2.26504.105." };
         sdk.Arguments.Add(sdkDirectory);
         sdk.SetAction(parse => Execute(parse.GetValue(json), "sdk", () =>
@@ -165,7 +164,7 @@ public static class CliApplication
         }, output, error, parse.GetValue(plain)));
         root.Subcommands.Add(sdk);
 
-        var processes = new Command("processes", "List processes advertising a .NET diagnostics endpoint.");
+        var processes = new Command("processes", "List .NET processes.");
         processes.SetAction(parse => Execute(parse.GetValue(json), "processes", () =>
         {
             var report = new ProcessReport(RuntimeInspector.Processes());
@@ -173,8 +172,8 @@ public static class CliApplication
         }, output, error, parse.GetValue(plain)));
         root.Subcommands.Add(processes);
 
-        var runtime = new Command("runtime", "Observe loaded assembly identities and modules through EventPipe and CLR rundown.");
-        var pid = new Option<int>("--pid") { Required = true, Description = "Target process ID, from reftrace processes." };
+        var runtime = new Command("runtime", "Observe loaded assemblies.");
+        var pid = new Option<int>("--pid") { Required = true, Description = "Target process ID, from ref processes." };
         var seconds = new Option<double>("--seconds") { DefaultValueFactory = _ => 1, Description = "Observation window, 0.1–30 seconds." };
         var timeout = new Option<double>("--timeout") { DefaultValueFactory = _ => 30, Description = "Total timeout including rundown, in seconds (maximum 300)." };
         var modules = new Option<bool>("--modules") { Description = "Show recorded IL/native module paths in terminal output." };
@@ -190,8 +189,8 @@ public static class CliApplication
                     TimeSpan.FromSeconds(parse.GetValue(seconds)), TimeSpan.FromSeconds(parse.GetValue(timeout)), token).ConfigureAwait(false);
                 if (parse.GetValue(json)) WriteJson(output, "runtime", report);
                 else if (parse.GetValue(plain))
-                    output.WriteLine($"PID: {report.ProcessId}{Environment.NewLine}Rundown complete: {report.RundownCompleted}{Environment.NewLine}Events lost: {report.EventsLost}{Environment.NewLine}" +
-                        string.Join(Environment.NewLine, report.Assemblies.Select(a => a.FullName)));
+                    await output.WriteLineAsync($"PID: {report.ProcessId}{Environment.NewLine}Rundown complete: {report.RundownCompleted}{Environment.NewLine}Events lost: {report.EventsLost}{Environment.NewLine}" +
+                        string.Join(Environment.NewLine, report.Assemblies.Select(a => a.FullName))).ConfigureAwait(false);
                 else TerminalRenderer.Render("runtime", report, output, parse.GetValue(modules));
                 return report.IsConclusive ? 0 : 2;
             }
@@ -206,6 +205,7 @@ public static class CliApplication
         });
         root.Subcommands.Add(runtime);
 
+        CliHelp.Configure(root, output, error);
         var parsed = root.Parse(args.Length == 0 ? ["--help"] : args);
         if (parsed.Errors.Count != 0)
             return Error(string.Join(Environment.NewLine, parsed.Errors.Select(e => e.Message)),
@@ -264,10 +264,13 @@ public static class CliApplication
     private static string RenderGraph(DependencyGraph graph)
     {
         var direct = graph.Edges.Where(e => e.From == graph.RootId).Select(e => e.To).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var lines = new List<string> { $"Project: {graph.ProjectPath}", $"Target: {graph.Target}", $"Evidence: {graph.SourcePath}" };
-        lines.AddRange(graph.Nodes.Where(n => n.Id != graph.RootId).Select(n =>
-            $"  {(direct.Contains(n.Id) ? "direct" : "transitive"),-10} {n.Kind,-8} {n.Id}/{n.Version}"));
-        lines.AddRange(graph.UnresolvedDeclarations.Select(d => $"  unresolved declaration: {d}"));
+        List<string> lines =
+        [
+            $"Project: {graph.ProjectPath}", $"Target: {graph.Target}", $"Evidence: {graph.SourcePath}",
+            .. graph.Nodes.Where(n => n.Id != graph.RootId).Select(n =>
+                $"  {(direct.Contains(n.Id) ? "direct" : "transitive"),-10} {n.Kind,-8} {n.Id}/{n.Version}"),
+            .. graph.UnresolvedDeclarations.Select(d => $"  unresolved declaration: {d}")
+        ];
         return string.Join(Environment.NewLine, lines);
     }
 
@@ -276,8 +279,8 @@ public static class CliApplication
 
     private static string RenderAssembly(AssemblyReport report)
     {
-        var lines = new List<string>
-        {
+        List<string> lines =
+        [
             $"Assembly: {report.Identity.Name}, Version={report.Identity.Version}",
             $"Target framework: {report.TargetFramework ?? "not recorded"}",
             $"File version: {report.FileVersion ?? "not recorded"}",
@@ -285,9 +288,9 @@ public static class CliApplication
             $"MVID: {report.ModuleVersionId}",
             $"Reference assembly: {report.IsReferenceAssembly}",
             $"Evidence: {report.SourcePath}",
-            "Static assembly references:"
-        };
-        lines.AddRange(report.References.Select(r => $"  {r.Name}, Version={r.Version}, PublicKeyToken={r.PublicKeyToken ?? "none"}"));
+            "Static assembly references:",
+            .. report.References.Select(r => $"  {r.Name}, Version={r.Version}, PublicKeyToken={r.PublicKeyToken ?? "none"}")
+        ];
         foreach (var type in report.Types)
         {
             lines.Add($"Type: {type.Name}");

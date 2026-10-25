@@ -15,20 +15,20 @@ Requires the .NET 10 runtime. Development uses the SDK pinned in `global.json`.
 ## Commands
 
 ```sh
-reftrace assets path/to/project.assets.json --framework net10.0
-reftrace packages path/to/project.assets.json --framework net10.0
-reftrace why path/to/project.assets.json System.Security.Cryptography.Pkcs --framework net10.0
-reftrace check path/to/project.assets.json --forbid-package 'Basic.Reference.Assemblies.*'
-reftrace check path/to/project.assets.json --forbid-project '*Other.Tests.csproj'
-reftrace assembly path/to/library.dll
-reftrace assembly path/to/library.dll --type 'Some.Namespace.Outer+Nested'
-reftrace sdk /usr/local/share/dotnet/sdk/11.0.100-rc.2.26504.105
-reftrace processes
-reftrace runtime --pid 12345 --seconds 1 --timeout 30 --modules
-reftrace reflection path/to/library.dll --json
-reftrace reflection path/to/library.dll --fail-on-findings
-reftrace aot inspect path/to/library.dll
-reftrace aot publish path/to/App.csproj --rid osx-arm64 --framework net10.0 --output ./artifacts/aot-audit
+ref assets path/to/project.assets.json --framework net10.0
+ref packages path/to/project.assets.json --framework net10.0
+ref why path/to/project.assets.json System.Security.Cryptography.Pkcs --framework net10.0
+ref check path/to/project.assets.json --forbid-package 'Basic.Reference.Assemblies.*'
+ref check path/to/project.assets.json --forbid-project '*Other.Tests.csproj'
+ref assembly path/to/library.dll
+ref assembly path/to/library.dll --type 'Some.Namespace.Outer+Nested'
+ref sdk /usr/local/share/dotnet/sdk/11.0.100-rc.2.26504.105
+ref processes
+ref runtime --pid 12345 --seconds 1 --timeout 30 --modules
+ref reflection path/to/library.dll --json
+ref reflection path/to/library.dll --fail-on-findings
+ref aot inspect path/to/library.dll
+ref aot publish path/to/App.csproj --rid osx-arm64 --framework net10.0 --output ./artifacts/aot-audit
 ```
 
 The default terminal view uses Spectre.Console tables, trees and status panels. ANSI is
@@ -198,9 +198,9 @@ RefTrace is not a vulnerability scanner; a passed dependency policy is not a sec
 For the prepared GitHub Actions workflow and NuGet account setup, see [Publishing setup](PUBLISHING.md).
 
 ```sh
-dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj -c Release -o artifacts/packages -p:Version=0.3.0
-dotnet tool install RefTrace --version 0.3.0 --add-source ./artifacts/packages --tool-path ./artifacts/tools
-./artifacts/tools/reftrace --help
+dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj -c Release -o artifacts/packages -p:Version=0.4.0
+dotnet tool install RefTrace --version 0.4.0 --add-source ./artifacts/packages --tool-path ./artifacts/tools
+./artifacts/tools/ref --help
 ```
 
 Use a new package version for each release. Before a public release, set the chosen license
@@ -209,7 +209,7 @@ Publishing requires ownership of the NuGet package ID and your NuGet publishing 
 or configured trusted publishing. Local packaging does not reserve the ID.
 
 ```sh
-dotnet nuget push artifacts/packages/RefTrace.0.3.0.nupkg --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY"
+dotnet nuget push artifacts/packages/RefTrace.0.4.0.nupkg --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY"
 ```
 
 The project has no automatic publish step. `CHANGELOG.md` tracks behavior changes; package

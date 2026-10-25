@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+
+* Shorten the command to `ref`, add `ref help`, and make the help overview concise.
+* Clarify installation and update the SDK to .NET 10.0.403.
+* Address InspectCode findings while preserving metadata fixtures and public C# names.
+* Remove the premature public API freeze during initial development.
+
 ## 0.3.0
 
 * Separate Model, Metadata, Assets and Build modules; retain Core type forwarders.
@@ -9,7 +16,7 @@
 * Report forwarded types and document architecture/evidence boundaries.
 * Include assembly-level metadata and debug directory kinds, with scope/namespace checks.
 * Record pre-publish MSBuild properties and a unique binary log in isolated per-run audit folders.
-* Add local preview installation, recorded public API checks, and publishing gates for the accepted commit and cross-platform CI.
+* Add publishing gates for the accepted commit and cross-platform CI.
 
 ## 0.2.0
 
