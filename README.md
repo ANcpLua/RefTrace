@@ -89,15 +89,23 @@ that the app is safe or AOT-compatible.
 
 ## Build and install locally
 
+Run these from the repository root to try the local preview. No NuGet account or
+API key is needed; the package stays on your machine.
+
 ```sh
 dotnet build RefTrace.slnx -c Release
-dotnet test --solution RefTrace.slnx -c Release
-dotnet pack src/RefTrace.Cli -c Release -o artifacts/packages
-dotnet tool install RefTrace --version 0.3.0 --add-source artifacts/packages --tool-path artifacts/tools
-./artifacts/tools/reftrace --help
+dotnet test --solution RefTrace.slnx -c Release --no-build
+dotnet pack src/RefTrace.Cli -c Release -p:Version=0.3.0-rc.1 -o artifacts/preview/packages
+dotnet tool install RefTrace --version 0.3.0-rc.1 --add-source artifacts/preview/packages --tool-path artifacts/preview/bin
+export PATH="$PWD/artifacts/preview/bin:$PATH"
+reftrace --help
 ```
 
-If it is already installed in that folder, use `dotnet tool update` instead of `install`.
+The `export` command is for macOS and Linux and affects only this terminal session.
+In PowerShell, use `$env:PATH = "$PWD/artifacts/preview/bin;$env:PATH"` instead.
+If the tool is already installed in that folder, use `dotnet tool update` instead of
+`install`. Reusing a version does not guarantee that a tool cache picks up a rebuilt
+package: use a new preview version when testing changes.
 
 For report formats, exact limits, and release steps, see the [technical reference](docs/REFERENCE.md).
 For the code layout and design decisions, see [architecture](ARCHITECTURE.md).

@@ -21,6 +21,22 @@ key. There is no long-lived NuGet API key to save in the repository.
 The workflow version must match `Directory.Build.props`. Each new release needs a new
 version. Confirm the NuGet policy is in place before the first publishing run.
 
+Before publishing, try a local preview using the README and record `git rev-parse HEAD`.
+If you find a problem, fix it and try a new preview version. A green CI run does not
+replace that product check.
+
+Start the publish workflow only after accepting the preview. Its `tested_commit` input
+must be the full SHA of that exact commit. The workflow rejects another commit and
+requires the latest cross-platform CI run for it to have succeeded. It then builds and
+runs the tests again before requesting a NuGet token.
+
+Public C# signatures and nullability are recorded in `src/*/PublicAPI.*.txt` and checked
+by Microsoft's PublicApiAnalyzers during every build. An API change must be explicit in
+those files and reviewed; do not regenerate the baseline merely to make CI green.
+These files check declared C# API shape, not runtime behavior or every detail of the CLI
+and JSON formats. The behavior tests cover those separately. The current baseline is
+the first release candidate, not evidence of compatibility with an earlier NuGet release.
+
 The policy values are:
 
 | Field | Value |

@@ -1,0 +1,4 @@
+#nullable enable
+RefTrace.Core.AssetsInspector
+static RefTrace.Core.AssetsInspector.Read(string! path, string? target = null) -> RefTrace.Core.DependencyGraph!
+static RefTrace.Core.AssetsInspector.Read(System.IO.Stream! stream, string! sourcePath, string? target = null) -> RefTrace.Core.DependencyGraph!

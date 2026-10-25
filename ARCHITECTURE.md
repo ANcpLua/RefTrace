@@ -19,10 +19,13 @@ flowchart TD
     Build --> Model
 ```
 
-`Model` has no package dependencies. `Metadata` uses the BCL and Model; it has no NuGet,
+`Model` has no runtime package dependencies. `Metadata` uses the BCL and Model; it has no NuGet,
 TraceEvent or Spectre dependency. `Assets` owns the NuGet client dependency. `Runtime`
 owns the diagnostic client and TraceEvent. `Build` owns subprocess execution. Spectre
 belongs only to the CLI. The terminal renderer never decides whether a finding is valid.
+
+Source projects also use PublicApiAnalyzers as a private build dependency. It appears
+in restore graphs, but its analyzer assemblies are not distributed with the tool.
 
 Core forwards the original public types to their owning assemblies using CLR type
 forwarders. Existing fully-qualified C# type names and CLI/JSON contracts remain usable.

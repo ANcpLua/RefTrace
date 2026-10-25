@@ -8,6 +8,10 @@ on:
         required: true
         type: string
         default: "0.3.0"
+      tested_commit:
+        description: Full commit SHA you accepted after trying the local preview
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -22,9 +26,11 @@ jobs:
     environment: release
     permissions:
       contents: read
+      actions: read
       id-token: write
     env:
       RELEASE_VERSION: ${{ inputs.version }}
+      TESTED_COMMIT: ${{ inputs.tested_commit }}
       NUGET_USER: ${{ secrets.NUGET_USER }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -41,9 +47,27 @@ jobs:
             echo "Set NUGET_USER in the release environment to your NuGet profile name."
             exit 1
           fi
+          if [[ ! "$TESTED_COMMIT" =~ ^[0-9a-f]{40}$ || "$TESTED_COMMIT" != "$GITHUB_SHA" ]]; then
+            echo "Publish the exact commit accepted during the local preview."
+            exit 1
+          fi
           project_version=$(dotnet msbuild src/RefTrace.Cli/RefTrace.Cli.csproj -getProperty:Version -nologo)
           if [[ "$project_version" != "$RELEASE_VERSION" ]]; then
             echo "The requested version must match Directory.Build.props."
+            exit 1
+          fi
+
+      - name: Require green cross-platform CI for this commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          result=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml \
+            --commit "$GITHUB_SHA" --branch main --event push --limit 1 \
+            --json conclusion --jq '.[0].conclusion // "missing"')
+          if [[ "$result" != success ]]; then
+            echo "The latest Build and test run for this commit must succeed on every platform (found: $result)."
             exit 1
           fi
 

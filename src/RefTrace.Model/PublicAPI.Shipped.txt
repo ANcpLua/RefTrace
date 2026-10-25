@@ -1,0 +1,206 @@
+#nullable enable
+override RefTrace.Core.ApiMember.Equals(object? obj) -> bool
+override RefTrace.Core.ApiMember.GetHashCode() -> int
+override RefTrace.Core.ApiMember.ToString() -> string!
+override RefTrace.Core.ApiType.Equals(object? obj) -> bool
+override RefTrace.Core.ApiType.GetHashCode() -> int
+override RefTrace.Core.ApiType.ToString() -> string!
+override RefTrace.Core.AssemblyIdentity.Equals(object? obj) -> bool
+override RefTrace.Core.AssemblyIdentity.GetHashCode() -> int
+override RefTrace.Core.AssemblyIdentity.ToString() -> string!
+override RefTrace.Core.AssemblyReport.Equals(object? obj) -> bool
+override RefTrace.Core.AssemblyReport.GetHashCode() -> int
+override RefTrace.Core.AssemblyReport.ToString() -> string!
+override RefTrace.Core.DependencyEdge.Equals(object? obj) -> bool
+override RefTrace.Core.DependencyEdge.GetHashCode() -> int
+override RefTrace.Core.DependencyEdge.ToString() -> string!
+override RefTrace.Core.DependencyGraph.Equals(object? obj) -> bool
+override RefTrace.Core.DependencyGraph.GetHashCode() -> int
+override RefTrace.Core.DependencyGraph.ToString() -> string!
+override RefTrace.Core.DependencyNode.Equals(object? obj) -> bool
+override RefTrace.Core.DependencyNode.GetHashCode() -> int
+override RefTrace.Core.DependencyNode.ToString() -> string!
+override RefTrace.Core.DependencyTrace.Equals(object? obj) -> bool
+override RefTrace.Core.DependencyTrace.GetHashCode() -> int
+override RefTrace.Core.DependencyTrace.ToString() -> string!
+override RefTrace.Core.PolicyReport.Equals(object? obj) -> bool
+override RefTrace.Core.PolicyReport.GetHashCode() -> int
+override RefTrace.Core.PolicyReport.ToString() -> string!
+override RefTrace.Core.PolicyViolation.Equals(object? obj) -> bool
+override RefTrace.Core.PolicyViolation.GetHashCode() -> int
+override RefTrace.Core.PolicyViolation.ToString() -> string!
+RefTrace.Core.ApiMember
+RefTrace.Core.ApiMember.<Clone>$() -> RefTrace.Core.ApiMember!
+RefTrace.Core.ApiMember.ApiMember(string! Name, string! Kind, bool IsStatic) -> void
+RefTrace.Core.ApiMember.Deconstruct(out string! Name, out string! Kind, out bool IsStatic) -> void
+RefTrace.Core.ApiMember.Equals(RefTrace.Core.ApiMember? other) -> bool
+RefTrace.Core.ApiMember.IsStatic.get -> bool
+RefTrace.Core.ApiMember.IsStatic.init -> void
+RefTrace.Core.ApiMember.Kind.get -> string!
+RefTrace.Core.ApiMember.Kind.init -> void
+RefTrace.Core.ApiMember.Name.get -> string!
+RefTrace.Core.ApiMember.Name.init -> void
+RefTrace.Core.ApiType
+RefTrace.Core.ApiType.<Clone>$() -> RefTrace.Core.ApiType!
+RefTrace.Core.ApiType.ApiType(string! Name, System.Collections.Generic.IReadOnlyList<RefTrace.Core.ApiMember!>! Members) -> void
+RefTrace.Core.ApiType.Deconstruct(out string! Name, out System.Collections.Generic.IReadOnlyList<RefTrace.Core.ApiMember!>! Members) -> void
+RefTrace.Core.ApiType.Equals(RefTrace.Core.ApiType? other) -> bool
+RefTrace.Core.ApiType.Members.get -> System.Collections.Generic.IReadOnlyList<RefTrace.Core.ApiMember!>!
+RefTrace.Core.ApiType.Members.init -> void
+RefTrace.Core.ApiType.Name.get -> string!
+RefTrace.Core.ApiType.Name.init -> void
+RefTrace.Core.AssemblyIdentity
+RefTrace.Core.AssemblyIdentity.<Clone>$() -> RefTrace.Core.AssemblyIdentity!
+RefTrace.Core.AssemblyIdentity.AssemblyIdentity(string! Name, string! Version, string? Culture, string? PublicKeyToken) -> void
+RefTrace.Core.AssemblyIdentity.Culture.get -> string?
+RefTrace.Core.AssemblyIdentity.Culture.init -> void
+RefTrace.Core.AssemblyIdentity.Deconstruct(out string! Name, out string! Version, out string? Culture, out string? PublicKeyToken) -> void
+RefTrace.Core.AssemblyIdentity.Equals(RefTrace.Core.AssemblyIdentity? other) -> bool
+RefTrace.Core.AssemblyIdentity.Name.get -> string!
+RefTrace.Core.AssemblyIdentity.Name.init -> void
+RefTrace.Core.AssemblyIdentity.PublicKeyToken.get -> string?
+RefTrace.Core.AssemblyIdentity.PublicKeyToken.init -> void
+RefTrace.Core.AssemblyIdentity.Version.get -> string!
+RefTrace.Core.AssemblyIdentity.Version.init -> void
+RefTrace.Core.AssemblyReport
+RefTrace.Core.AssemblyReport.<Clone>$() -> RefTrace.Core.AssemblyReport!
+RefTrace.Core.AssemblyReport.AssemblyMetadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>!
+RefTrace.Core.AssemblyReport.AssemblyMetadata.init -> void
+RefTrace.Core.AssemblyReport.AssemblyReport(string! SourcePath, RefTrace.Core.AssemblyIdentity! Identity, string! ModuleVersionId, string? TargetFramework, string? FileVersion, string? InformationalVersion, bool IsReferenceAssembly, System.Collections.Generic.IReadOnlyList<RefTrace.Core.AssemblyIdentity!>! References, System.Collections.Generic.IReadOnlyList<RefTrace.Core.ApiType!>! Types) -> void
+RefTrace.Core.AssemblyReport.DebugDirectoryKinds.get -> System.Collections.Generic.IReadOnlyList<string!>!
+RefTrace.Core.AssemblyReport.DebugDirectoryKinds.init -> void
+RefTrace.Core.AssemblyReport.Deconstruct(out string! SourcePath, out RefTrace.Core.AssemblyIdentity! Identity, out string! ModuleVersionId, out string? TargetFramework, out string? FileVersion, out string? InformationalVersion, out bool IsReferenceAssembly, out System.Collections.Generic.IReadOnlyList<RefTrace.Core.AssemblyIdentity!>! References, out System.Collections.Generic.IReadOnlyList<RefTrace.Core.ApiType!>! Types) -> void
+RefTrace.Core.AssemblyReport.Equals(RefTrace.Core.AssemblyReport? other) -> bool
+RefTrace.Core.AssemblyReport.FileVersion.get -> string?
+RefTrace.Core.AssemblyReport.FileVersion.init -> void
+RefTrace.Core.AssemblyReport.ForwardedTypes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+RefTrace.Core.AssemblyReport.ForwardedTypes.init -> void
+RefTrace.Core.AssemblyReport.Identity.get -> RefTrace.Core.AssemblyIdentity!
+RefTrace.Core.AssemblyReport.Identity.init -> void
+RefTrace.Core.AssemblyReport.InformationalVersion.get -> string?
+RefTrace.Core.AssemblyReport.InformationalVersion.init -> void
+RefTrace.Core.AssemblyReport.IsReferenceAssembly.get -> bool
+RefTrace.Core.AssemblyReport.IsReferenceAssembly.init -> void
+RefTrace.Core.AssemblyReport.ModuleVersionId.get -> string!
+RefTrace.Core.AssemblyReport.ModuleVersionId.init -> void
+RefTrace.Core.AssemblyReport.References.get -> System.Collections.Generic.IReadOnlyList<RefTrace.Core.AssemblyIdentity!>!
+RefTrace.Core.AssemblyReport.References.init -> void
+RefTrace.Core.AssemblyReport.SourcePath.get -> string!
+RefTrace.Core.AssemblyReport.SourcePath.init -> void
+RefTrace.Core.AssemblyReport.TargetFramework.get -> string?
+RefTrace.Core.AssemblyReport.TargetFramework.init -> void
+RefTrace.Core.AssemblyReport.Types.get -> System.Collections.Generic.IReadOnlyList<RefTrace.Core.ApiType!>!
+RefTrace.Core.AssemblyReport.Types.init -> void
+RefTrace.Core.DependencyEdge
+RefTrace.Core.DependencyEdge.<Clone>$() -> RefTrace.Core.DependencyEdge!
+RefTrace.Core.DependencyEdge.Deconstruct(out string! From, out string! To, out string! RequestedVersion) -> void
+RefTrace.Core.DependencyEdge.DependencyEdge(string! From, string! To, string! RequestedVersion) -> void
+RefTrace.Core.DependencyEdge.Equals(RefTrace.Core.DependencyEdge? other) -> bool
+RefTrace.Core.DependencyEdge.From.get -> string!
+RefTrace.Core.DependencyEdge.From.init -> void
+RefTrace.Core.DependencyEdge.RequestedVersion.get -> string!
+RefTrace.Core.DependencyEdge.RequestedVersion.init -> void
+RefTrace.Core.DependencyEdge.To.get -> string!
+RefTrace.Core.DependencyEdge.To.init -> void
+RefTrace.Core.DependencyGraph
+RefTrace.Core.DependencyGraph.<Clone>$() -> RefTrace.Core.DependencyGraph!
+RefTrace.Core.DependencyGraph.Deconstruct(out string! SourcePath, out string! ProjectPath, out string! Target, out string! Framework, out string? RuntimeIdentifier, out string! RootId, out System.Collections.Generic.IReadOnlyList<RefTrace.Core.DependencyNode!>! Nodes, out System.Collections.Generic.IReadOnlyList<RefTrace.Core.DependencyEdge!>! Edges, out System.Collections.Generic.IReadOnlyList<string!>! UnresolvedDeclarations) -> void
+RefTrace.Core.DependencyGraph.DependencyGraph(string! SourcePath, string! ProjectPath, string! Target, string! Framework, string? RuntimeIdentifier, string! RootId, System.Collections.Generic.IReadOnlyList<RefTrace.Core.DependencyNode!>! Nodes, System.Collections.Generic.IReadOnlyList<RefTrace.Core.DependencyEdge!>! Edges, System.Collections.Generic.IReadOnlyList<string!>! UnresolvedDeclarations) -> void
+RefTrace.Core.DependencyGraph.Edges.get -> System.Collections.Generic.IReadOnlyList<RefTrace.Core.DependencyEdge!>!
+RefTrace.Core.DependencyGraph.Edges.init -> void
+RefTrace.Core.DependencyGraph.Equals(RefTrace.Core.DependencyGraph? other) -> bool
+RefTrace.Core.DependencyGraph.Framework.get -> string!
+RefTrace.Core.DependencyGraph.Framework.init -> void
+RefTrace.Core.DependencyGraph.Nodes.get -> System.Collections.Generic.IReadOnlyList<RefTrace.Core.DependencyNode!>!
+RefTrace.Core.DependencyGraph.Nodes.init -> void
+RefTrace.Core.DependencyGraph.ProjectPath.get -> string!
+RefTrace.Core.DependencyGraph.ProjectPath.init -> void
+RefTrace.Core.DependencyGraph.RootId.get -> string!
+RefTrace.Core.DependencyGraph.RootId.init -> void
+RefTrace.Core.DependencyGraph.RuntimeIdentifier.get -> string?
+RefTrace.Core.DependencyGraph.RuntimeIdentifier.init -> void
+RefTrace.Core.DependencyGraph.SourcePath.get -> string!
+RefTrace.Core.DependencyGraph.SourcePath.init -> void
+RefTrace.Core.DependencyGraph.Target.get -> string!
+RefTrace.Core.DependencyGraph.Target.init -> void
+RefTrace.Core.DependencyGraph.UnresolvedDeclarations.get -> System.Collections.Generic.IReadOnlyList<string!>!
+RefTrace.Core.DependencyGraph.UnresolvedDeclarations.init -> void
+RefTrace.Core.DependencyNode
+RefTrace.Core.DependencyNode.<Clone>$() -> RefTrace.Core.DependencyNode!
+RefTrace.Core.DependencyNode.CompileAssets.get -> System.Collections.Generic.IReadOnlyList<string!>!
+RefTrace.Core.DependencyNode.CompileAssets.init -> void
+RefTrace.Core.DependencyNode.Deconstruct(out string! Id, out string! Version, out string! Kind, out string? ProjectPath, out System.Collections.Generic.IReadOnlyList<string!>! CompileAssets, out System.Collections.Generic.IReadOnlyList<string!>! RuntimeAssets) -> void
+RefTrace.Core.DependencyNode.DependencyNode(string! Id, string! Version, string! Kind, string? ProjectPath, System.Collections.Generic.IReadOnlyList<string!>! CompileAssets, System.Collections.Generic.IReadOnlyList<string!>! RuntimeAssets) -> void
+RefTrace.Core.DependencyNode.Equals(RefTrace.Core.DependencyNode? other) -> bool
+RefTrace.Core.DependencyNode.Id.get -> string!
+RefTrace.Core.DependencyNode.Id.init -> void
+RefTrace.Core.DependencyNode.Kind.get -> string!
+RefTrace.Core.DependencyNode.Kind.init -> void
+RefTrace.Core.DependencyNode.ProjectPath.get -> string?
+RefTrace.Core.DependencyNode.ProjectPath.init -> void
+RefTrace.Core.DependencyNode.RuntimeAssets.get -> System.Collections.Generic.IReadOnlyList<string!>!
+RefTrace.Core.DependencyNode.RuntimeAssets.init -> void
+RefTrace.Core.DependencyNode.Version.get -> string!
+RefTrace.Core.DependencyNode.Version.init -> void
+RefTrace.Core.DependencyTrace
+RefTrace.Core.DependencyTrace.<Clone>$() -> RefTrace.Core.DependencyTrace!
+RefTrace.Core.DependencyTrace.Deconstruct(out string! Dependency, out bool Found, out System.Collections.Generic.IReadOnlyList<RefTrace.Core.DependencyNode!>! Path) -> void
+RefTrace.Core.DependencyTrace.Dependency.get -> string!
+RefTrace.Core.DependencyTrace.Dependency.init -> void
+RefTrace.Core.DependencyTrace.DependencyTrace(string! Dependency, bool Found, System.Collections.Generic.IReadOnlyList<RefTrace.Core.DependencyNode!>! Path) -> void
+RefTrace.Core.DependencyTrace.Equals(RefTrace.Core.DependencyTrace? other) -> bool
+RefTrace.Core.DependencyTrace.Found.get -> bool
+RefTrace.Core.DependencyTrace.Found.init -> void
+RefTrace.Core.DependencyTrace.Path.get -> System.Collections.Generic.IReadOnlyList<RefTrace.Core.DependencyNode!>!
+RefTrace.Core.DependencyTrace.Path.init -> void
+RefTrace.Core.GraphQueries
+RefTrace.Core.InspectionException
+RefTrace.Core.InspectionException.InspectionException(string! message) -> void
+RefTrace.Core.PolicyReport
+RefTrace.Core.PolicyReport.<Clone>$() -> RefTrace.Core.PolicyReport!
+RefTrace.Core.PolicyReport.Deconstruct(out string! SourcePath, out string! Target, out bool Passed, out System.Collections.Generic.IReadOnlyList<RefTrace.Core.PolicyViolation!>! Violations, out System.Collections.Generic.IReadOnlyList<string!>! UnresolvedDependencies) -> void
+RefTrace.Core.PolicyReport.Equals(RefTrace.Core.PolicyReport? other) -> bool
+RefTrace.Core.PolicyReport.Passed.get -> bool
+RefTrace.Core.PolicyReport.Passed.init -> void
+RefTrace.Core.PolicyReport.PolicyReport(string! SourcePath, string! Target, bool Passed, System.Collections.Generic.IReadOnlyList<RefTrace.Core.PolicyViolation!>! Violations, System.Collections.Generic.IReadOnlyList<string!>! UnresolvedDependencies) -> void
+RefTrace.Core.PolicyReport.SourcePath.get -> string!
+RefTrace.Core.PolicyReport.SourcePath.init -> void
+RefTrace.Core.PolicyReport.Target.get -> string!
+RefTrace.Core.PolicyReport.Target.init -> void
+RefTrace.Core.PolicyReport.UnresolvedDependencies.get -> System.Collections.Generic.IReadOnlyList<string!>!
+RefTrace.Core.PolicyReport.UnresolvedDependencies.init -> void
+RefTrace.Core.PolicyReport.Violations.get -> System.Collections.Generic.IReadOnlyList<RefTrace.Core.PolicyViolation!>!
+RefTrace.Core.PolicyReport.Violations.init -> void
+RefTrace.Core.PolicyViolation
+RefTrace.Core.PolicyViolation.<Clone>$() -> RefTrace.Core.PolicyViolation!
+RefTrace.Core.PolicyViolation.Deconstruct(out string! Pattern, out RefTrace.Core.DependencyNode! Dependency, out System.Collections.Generic.IReadOnlyList<RefTrace.Core.DependencyNode!>! Path) -> void
+RefTrace.Core.PolicyViolation.Dependency.get -> RefTrace.Core.DependencyNode!
+RefTrace.Core.PolicyViolation.Dependency.init -> void
+RefTrace.Core.PolicyViolation.Equals(RefTrace.Core.PolicyViolation? other) -> bool
+RefTrace.Core.PolicyViolation.Path.get -> System.Collections.Generic.IReadOnlyList<RefTrace.Core.DependencyNode!>!
+RefTrace.Core.PolicyViolation.Path.init -> void
+RefTrace.Core.PolicyViolation.Pattern.get -> string!
+RefTrace.Core.PolicyViolation.Pattern.init -> void
+RefTrace.Core.PolicyViolation.PolicyViolation(string! Pattern, RefTrace.Core.DependencyNode! Dependency, System.Collections.Generic.IReadOnlyList<RefTrace.Core.DependencyNode!>! Path) -> void
+static RefTrace.Core.ApiMember.operator !=(RefTrace.Core.ApiMember? left, RefTrace.Core.ApiMember? right) -> bool
+static RefTrace.Core.ApiMember.operator ==(RefTrace.Core.ApiMember? left, RefTrace.Core.ApiMember? right) -> bool
+static RefTrace.Core.ApiType.operator !=(RefTrace.Core.ApiType? left, RefTrace.Core.ApiType? right) -> bool
+static RefTrace.Core.ApiType.operator ==(RefTrace.Core.ApiType? left, RefTrace.Core.ApiType? right) -> bool
+static RefTrace.Core.AssemblyIdentity.operator !=(RefTrace.Core.AssemblyIdentity? left, RefTrace.Core.AssemblyIdentity? right) -> bool
+static RefTrace.Core.AssemblyIdentity.operator ==(RefTrace.Core.AssemblyIdentity? left, RefTrace.Core.AssemblyIdentity? right) -> bool
+static RefTrace.Core.AssemblyReport.operator !=(RefTrace.Core.AssemblyReport? left, RefTrace.Core.AssemblyReport? right) -> bool
+static RefTrace.Core.AssemblyReport.operator ==(RefTrace.Core.AssemblyReport? left, RefTrace.Core.AssemblyReport? right) -> bool
+static RefTrace.Core.DependencyEdge.operator !=(RefTrace.Core.DependencyEdge? left, RefTrace.Core.DependencyEdge? right) -> bool
+static RefTrace.Core.DependencyEdge.operator ==(RefTrace.Core.DependencyEdge? left, RefTrace.Core.DependencyEdge? right) -> bool
+static RefTrace.Core.DependencyGraph.operator !=(RefTrace.Core.DependencyGraph? left, RefTrace.Core.DependencyGraph? right) -> bool
+static RefTrace.Core.DependencyGraph.operator ==(RefTrace.Core.DependencyGraph? left, RefTrace.Core.DependencyGraph? right) -> bool
+static RefTrace.Core.DependencyNode.operator !=(RefTrace.Core.DependencyNode? left, RefTrace.Core.DependencyNode? right) -> bool
+static RefTrace.Core.DependencyNode.operator ==(RefTrace.Core.DependencyNode? left, RefTrace.Core.DependencyNode? right) -> bool
+static RefTrace.Core.DependencyTrace.operator !=(RefTrace.Core.DependencyTrace? left, RefTrace.Core.DependencyTrace? right) -> bool
+static RefTrace.Core.DependencyTrace.operator ==(RefTrace.Core.DependencyTrace? left, RefTrace.Core.DependencyTrace? right) -> bool
+static RefTrace.Core.GraphQueries.Check(RefTrace.Core.DependencyGraph! graph, System.Collections.Generic.IReadOnlyList<string!>! forbiddenPackages, System.Collections.Generic.IReadOnlyList<string!>! forbiddenProjects) -> RefTrace.Core.PolicyReport!
+static RefTrace.Core.GraphQueries.Explain(RefTrace.Core.DependencyGraph! graph, string! dependency) -> RefTrace.Core.DependencyTrace!
+static RefTrace.Core.PolicyReport.operator !=(RefTrace.Core.PolicyReport? left, RefTrace.Core.PolicyReport? right) -> bool
+static RefTrace.Core.PolicyReport.operator ==(RefTrace.Core.PolicyReport? left, RefTrace.Core.PolicyReport? right) -> bool
+static RefTrace.Core.PolicyViolation.operator !=(RefTrace.Core.PolicyViolation? left, RefTrace.Core.PolicyViolation? right) -> bool
+static RefTrace.Core.PolicyViolation.operator ==(RefTrace.Core.PolicyViolation? left, RefTrace.Core.PolicyViolation? right) -> bool

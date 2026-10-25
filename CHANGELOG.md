@@ -9,6 +9,7 @@
 * Report forwarded types and document architecture/evidence boundaries.
 * Include assembly-level metadata and debug directory kinds, with scope/namespace checks.
 * Record pre-publish MSBuild properties and a unique binary log in isolated per-run audit folders.
+* Add local preview installation, recorded public API checks, and publishing gates for the accepted commit and cross-platform CI.
 
 ## 0.2.0
 
