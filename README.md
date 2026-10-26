@@ -6,15 +6,15 @@ RefTrace helps you follow a package back to its source, look inside a DLL, and c
 a running app. It shows what it found and tells you when there is not enough information
 to draw a conclusion.
 
-Requires .NET 10.
+Requires .NET 11 RC3.
 
 ## Install
 
-The first NuGet release is pending. Install the current source with the .NET 10 SDK:
+The first NuGet release is pending. Install the current source with the .NET 11 RC3 SDK:
 
 ```sh
 dotnet pack src/RefTrace.Cli -c Release -o artifacts/packages
-dotnet tool install --global RefTrace --version 0.4.0 --add-source artifacts/packages
+dotnet tool install --global RefTrace --version 0.5.0-preview.1 --add-source artifacts/packages
 ref help
 ```
 
@@ -34,7 +34,7 @@ ref check obj/project.assets.json --forbid-package 'Unwanted.*'
 ```
 
 `project.assets.json` is created when your project is restored. If it contains more than
-one target, choose one with `--framework net10.0`.
+one target, choose one with `--framework net11.0`.
 
 Use `assets` for the full graph, including project references. To check a project boundary,
 use `--forbid-project '*Other.Tests.csproj'`. Quote patterns so your shell passes them through.
@@ -71,7 +71,7 @@ ref aot publish MyApp.csproj --rid osx-arm64 --output artifacts/aot-check
 
 `inspect` gives you things to review. `publish` tries a real Native AOT build and saves
 its result and logs in a new folder. It runs the project's build steps; it does not upload
-anything to NuGet. For a multi-targeted project, add `--framework net10.0`.
+anything to NuGet. For a multi-targeted project, add `--framework net11.0`.
 
 To see which compiler and native CLI files an installed SDK contains:
 
