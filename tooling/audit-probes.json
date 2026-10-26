@@ -1,0 +1,67 @@
+{
+  "NuGet.ProjectModel": {
+    "types": [
+      "NuGet.ProjectModel.LockFileFormat"
+    ],
+    "sourceFiles": [
+      "src/NuGet.Core/NuGet.ProjectModel/LockFile/LockFileFormat.cs"
+    ]
+  },
+  "System.CommandLine": {
+    "types": [
+      "System.CommandLine.RootCommand",
+      "System.CommandLine.Help.HelpAction",
+      "System.CommandLine.Help.HelpBuilder"
+    ],
+    "sourceFiles": [
+      "src/command-line-api/src/System.CommandLine/RootCommand.cs",
+      "src/command-line-api/src/System.CommandLine/Help/HelpAction.cs"
+    ]
+  },
+  "System.Security.Cryptography.Pkcs": {
+    "types": [
+      "System.Security.Cryptography.Pkcs.SignedCms"
+    ],
+    "sourceFiles": [
+      "src/runtime/src/libraries/System.Security.Cryptography.Pkcs/src/System/Security/Cryptography/Pkcs/SignedCms.cs"
+    ]
+  },
+  "Spectre.Console": {
+    "types": [
+      "Spectre.Console.AnsiConsole"
+    ],
+    "sourceFiles": [
+      "src/Spectre.Console/AnsiConsole.cs"
+    ]
+  },
+  "Microsoft.Diagnostics.NETCore.Client": {
+    "types": [
+      "Microsoft.Diagnostics.NETCore.Client.DiagnosticsClient"
+    ],
+    "sourceFiles": [
+      "src/Microsoft.Diagnostics.NETCore.Client/DiagnosticsClient/DiagnosticsClient.cs"
+    ]
+  },
+  "Microsoft.Diagnostics.Tracing.TraceEvent": {
+    "types": [
+      "Microsoft.Diagnostics.Tracing.EventPipeEventSource"
+    ],
+    "sourceFiles": [
+      "src/TraceEvent/EventPipe/EventPipeEventSource.cs"
+    ],
+    "sourceFallback": {
+      "version": "4.0.0",
+      "repository": {
+        "url": "https://github.com/microsoft/perfview",
+        "commit": "10e5d271cebcdf5d6cf122c6ab9c863860a7a2f1"
+      }
+    }
+  },
+  "MSTest.Sdk": {
+    "types": [],
+    "sourceFiles": [
+      "src/Package/MSTest.Sdk/Sdk/Sdk.props.template",
+      "src/Package/MSTest.Sdk/Sdk/Runner/Runner.targets.template"
+    ]
+  }
+}

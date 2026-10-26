@@ -21,4 +21,5 @@ namespace RefTrace.Cli;
 [JsonSerializable(typeof(ReflectionReport))]
 [JsonSerializable(typeof(AotInspectionReport))]
 [JsonSerializable(typeof(AotPublishReport))]
+[JsonSerializable(typeof(PackageReleaseReport))]
 internal partial class RefTraceJsonContext : JsonSerializerContext;

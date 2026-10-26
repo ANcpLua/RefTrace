@@ -8,11 +8,17 @@ internal static class CliHelp
 {
     internal static void Configure(RootCommand root, TextWriter output, TextWriter error)
     {
-        root.Options.OfType<HelpOption>().Single().Action = new HelpAction(root, output);
+        var details = new HelpAction { MaxWidth = 88 };
+        root.Options.OfType<HelpOption>().Single().Action = new InformationalAction(parse =>
+        {
+            if (!ReferenceEquals(parse.CommandResult.Command, root)) return details.Invoke(parse);
+            WriteOverview(root, output);
+            return 0;
+        });
         var help = new Command("help", "Show command help.");
         var path = new Argument<string[]>("command") { Arity = ArgumentArity.ZeroOrMore };
         help.Arguments.Add(path);
-        help.SetAction(parse =>
+        help.Action = new InformationalAction(parse =>
         {
             Command command = root;
             foreach (var name in parse.GetValue(path) ?? [])
@@ -25,56 +31,29 @@ internal static class CliHelp
                 }
                 command = child;
             }
-            Write(command, root, output);
-            return 0;
+            if (ReferenceEquals(command, root)) { WriteOverview(root, output); return 0; }
+            return command.Parse(["--help"]).Invoke(new InvocationConfiguration
+            {
+                Output = output, Error = error, EnableDefaultExceptionHandler = false
+            });
         });
         root.Subcommands.Add(help);
     }
 
-    private static void Write(Command command, RootCommand root, TextWriter output)
+    private static void WriteOverview(RootCommand root, TextWriter output)
     {
-        if (ReferenceEquals(command, root))
-        {
-            output.WriteLine("ref — trace .NET dependencies and assemblies");
-            output.WriteLine("Usage: ref <command> [options]");
-            output.WriteLine();
-            WriteRows(command.Subcommands.Where(child => !child.Hidden)
-                .Select(child => (UsageLabel(child), child.Description ?? "")), output);
-            output.WriteLine();
-            output.WriteLine("Options: --json  --plain  --version");
-            output.WriteLine("Details: ref help <command>");
-            return;
-        }
-
-        var parts = new List<string>();
-        for (var current = command; current is not null; current = current.Parents.OfType<Command>().FirstOrDefault())
-            parts.Insert(0, current is RootCommand ? "ref" : UsageLabel(current));
-        if (command.Subcommands.Count != 0) parts.Add("<command>");
-        parts.Add("[options]");
-        output.WriteLine("Usage: " + string.Join(' ', parts));
-        output.WriteLine(command.Description);
+        output.WriteLine("ref — trace .NET dependencies and assemblies");
+        output.WriteLine("Usage: ref <command> [options]");
         output.WriteLine();
-        if (command.Arguments.Count != 0)
-        {
-            output.WriteLine("Arguments:");
-            WriteRows(command.Arguments.Select(argument => (ArgumentLabel(argument), argument.Description ?? "")), output);
-            output.WriteLine();
-        }
-        output.WriteLine("Options:");
-        WriteRows(command.Options.Concat(root.Options.Where(option => option.Recursive)).Distinct()
-            .Where(option => !option.Hidden).Select(option =>
-                (string.Join(", ", new[] { option.Name }.Concat(option.Aliases))
-                 + (option.Arity.MinimumNumberOfValues > 0 ? " <value>" : "")
-                 + (option.Required ? " (required)" : ""), option.Description ?? "")), output);
-        if (command.Subcommands.Count == 0) return;
+        var rows = root.Subcommands.Where(command => !command.Hidden)
+            .Select(command => (Label: string.Join(' ', new[] { command.Name }
+                .Concat(command.Arguments.Select(ArgumentLabel))), command.Description)).ToArray();
+        var width = rows.Max(item => item.Label.Length) + 2;
+        foreach (var item in rows) output.WriteLine("  " + item.Label.PadRight(width) + item.Description);
         output.WriteLine();
-        output.WriteLine("Commands:");
-        WriteRows(command.Subcommands.Where(child => !child.Hidden)
-            .Select(child => (UsageLabel(child), child.Description ?? "")), output);
+        output.WriteLine("Options: --json  --plain  --version");
+        output.WriteLine("Details: ref help <command>");
     }
-
-    private static string UsageLabel(Command command)
-        => string.Join(' ', new[] { command.Name }.Concat(command.Arguments.Select(ArgumentLabel)));
 
     private static string ArgumentLabel(Argument argument)
     {
@@ -82,20 +61,9 @@ internal static class CliHelp
         return argument.Arity.MinimumNumberOfValues == 0 ? "[" + label + "]" : label;
     }
 
-    private static void WriteRows(IEnumerable<(string Label, string Description)> rows, TextWriter output)
-    {
-        var items = rows.ToArray();
-        var width = items.Length == 0 ? 0 : items.Max(item => item.Label.Length) + 2;
-        foreach (var item in items) output.WriteLine("  " + item.Label.PadRight(width) + item.Description);
-    }
-
-    private sealed class HelpAction(RootCommand root, TextWriter output) : SynchronousCommandLineAction
+    private sealed class InformationalAction(Func<ParseResult, int> invoke) : SynchronousCommandLineAction
     {
         public override bool ClearsParseErrors => true;
-        public override int Invoke(ParseResult parseResult)
-        {
-            Write(parseResult.CommandResult.Command, root, output);
-            return 0;
-        }
+        public override int Invoke(ParseResult parseResult) => invoke(parseResult);
     }
 }

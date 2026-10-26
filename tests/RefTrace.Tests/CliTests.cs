@@ -119,7 +119,7 @@ public sealed class CliTests(TestContext context)
         Assert.AreEqual(0, result.Exit);
         Assert.AreEqual("", result.Error);
         Assert.AreEqual(Run("aot", "publish", "--help").Output, result.Output);
-        Assert.Contains("Usage: ref aot publish <project>", result.Output);
+        Assert.Contains("ref aot publish <project>", result.Output);
         Assert.Contains("--rid", result.Output);
         Assert.Contains("--output", result.Output);
     }
@@ -131,6 +131,26 @@ public sealed class CliTests(TestContext context)
         Assert.AreEqual(2, result.Exit);
         Assert.AreEqual("", result.Output);
         Assert.Contains("Unknown command 'unknown'", result.Error);
+    }
+
+    [TestMethod]
+    [DataRow("--help")]
+    [DataRow("help")]
+    public void Help_ClearsConflictingOutputOptions(string command)
+    {
+        var result = Run(command, "--json", "--plain");
+        Assert.AreEqual(0, result.Exit);
+        Assert.AreEqual("", result.Error);
+        Assert.DoesNotContain("invalid-input", result.Output);
+    }
+
+    [TestMethod]
+    public void Version_UsesTheLibraryArgumentValidation()
+    {
+        Assert.AreEqual(0, Run("--version").Exit);
+        var result = Run("--version", "--plain");
+        Assert.AreEqual(2, result.Exit);
+        Assert.Contains("cannot be combined", result.Error);
     }
 
     [TestMethod]

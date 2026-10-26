@@ -17,3 +17,6 @@ TestResults/
 !.env.example
 
 inspectcode*.sarif
+.venv/
+__pycache__/
+*.pyc

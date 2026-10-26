@@ -29,6 +29,11 @@ forwarders. Existing fully-qualified C# type names and CLI/JSON contracts remain
 Reflection on a forwarded type correctly reports its new defining assembly. Core is kept
 for compatibility; new integrations should reference the owning module.
 
+`ReleaseCatalog` uses NuGet's version comparer. The C# 15 `ReleaseDecision` union keeps
+the two outcomes explicit, with exhaustive switch expressions and default-value rejection.
+The Python package-audit collector calls RefTrace and ILSpy and stores their evidence;
+it does not implement a second NuGet version parser or mutate dependency pins.
+
 ## Different questions require different evidence
 
 | Question | Source | What it establishes |

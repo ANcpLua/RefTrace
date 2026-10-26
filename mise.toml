@@ -1,0 +1,7 @@
+[tasks.audit]
+description = "Collect NuGet, source and DLL evidence"
+run = "make audit"
+
+[tasks.test]
+description = "Run the application and audit-tool tests"
+run = "make test audit-test"

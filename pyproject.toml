@@ -1,0 +1,9 @@
+[project]
+name = "reftrace-audit"
+version = "0.1.0"
+description = "Reproducible NuGet, source and assembly evidence for RefTrace maintenance"
+requires-python = ">=3.14"
+dependencies = []
+
+[tool.uv]
+package = false

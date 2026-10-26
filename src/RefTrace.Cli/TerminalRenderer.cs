@@ -15,6 +15,16 @@ internal static class TerminalRenderer
         console.Write(new Rule($"[bold cyan]REFTRACE[/] [dim]· {Markup.Escape(kind.ToUpperInvariant())}[/]").LeftJustified());
         switch (data)
         {
+            case PackageReleaseReport releases:
+                Evidence(console, releases.SourcePath, "NuGet version ordering");
+                var releaseTable = Table("Version", "Value");
+                releaseTable.AddRow(Text("Current"), Text(releases.Current));
+                releaseTable.AddRow(Text("Latest stable"), Text(releases.LatestStable ?? "none"));
+                releaseTable.AddRow(Text("Latest prerelease"), Text(releases.LatestPrerelease ?? "none"));
+                releaseTable.AddRow(Text("Selected"), Text(releases.Selected));
+                console.Write(releaseTable);
+                Note(console, releases.Selection);
+                break;
             case DependencyGraph graph:
                 Evidence(console, graph.SourcePath, graph.Target);
                 var direct = graph.Edges.Where(e => e.From == graph.RootId).Select(e => e.To).ToHashSet(StringComparer.OrdinalIgnoreCase);

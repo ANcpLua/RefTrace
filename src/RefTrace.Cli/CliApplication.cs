@@ -15,11 +15,23 @@ public static class CliApplication
     public static async Task<int> RunAsync(string[] args, TextWriter output, TextWriter error,
         CancellationToken cancellationToken = default)
     {
-        var root = new RootCommand("Trace .NET dependencies and assemblies.");
+        var root = new RootCommand("Trace .NET dependencies and assemblies.") { HelpName = "ref" };
         var json = new Option<bool>("--json") { Description = "Write JSON.", Recursive = true };
         root.Options.Add(json);
         var plain = new Option<bool>("--plain") { Description = "Write plain text.", Recursive = true };
         root.Options.Add(plain);
+
+        var versions = new Command("versions", "Compare NuGet package versions.");
+        var indexFile = new Argument<string>("index") { Description = "Local NuGet flat-container index JSON." };
+        var currentVersion = new Option<string>("--current") { Required = true, Description = "Currently selected package version." };
+        versions.Arguments.Add(indexFile);
+        versions.Options.Add(currentVersion);
+        versions.SetAction(parse => Execute(parse.GetValue(json), "versions", () =>
+        {
+            var report = ReleaseCatalog.Read(parse.GetValue(indexFile)!, parse.GetValue(currentVersion)!);
+            return (report, 0, $"Current: {report.Current}\nStable: {report.LatestStable}\nPreview: {report.LatestPrerelease}\nSelected: {report.Selected} ({report.Selection})");
+        }, output, error, parse.GetValue(plain)));
+        root.Subcommands.Add(versions);
 
         var (assets, assetsFile, assetsTarget) = GraphCommand("assets", "Show the dependency graph.");
         assets.SetAction(parse => Execute(parse.GetValue(json), "assets", () =>
@@ -138,7 +150,7 @@ public static class CliApplication
                     parse.GetValue(publishOutput)!, TimeSpan.FromSeconds(parse.GetValue(publishTimeout)),
                     parse.GetValue(dotnet)!, token, parse.GetValue(publishFramework)).ConfigureAwait(false);
                 if (parse.GetValue(json)) WriteJson(output, "aot-publish", report);
-                else if (parse.GetValue(plain)) await output.WriteLineAsync($"Publish: {report.Outcome}; exit code: {report.ExitCode}; log: {report.LogPath}").ConfigureAwait(false);
+                else if (parse.GetValue(plain)) await output.WriteLineAsync($"Publish: {report.Outcome}; exit code: {report.ExitCode}; log: {report.LogPath}".AsMemory(), token).ConfigureAwait(false);
                 else TerminalRenderer.Render("aot-publish", report, output);
                 return report.Outcome switch { "succeeded" => 0, "failed" => 1, _ => 2 };
             }
@@ -189,8 +201,8 @@ public static class CliApplication
                     TimeSpan.FromSeconds(parse.GetValue(seconds)), TimeSpan.FromSeconds(parse.GetValue(timeout)), token).ConfigureAwait(false);
                 if (parse.GetValue(json)) WriteJson(output, "runtime", report);
                 else if (parse.GetValue(plain))
-                    await output.WriteLineAsync($"PID: {report.ProcessId}{Environment.NewLine}Rundown complete: {report.RundownCompleted}{Environment.NewLine}Events lost: {report.EventsLost}{Environment.NewLine}" +
-                        string.Join(Environment.NewLine, report.Assemblies.Select(a => a.FullName))).ConfigureAwait(false);
+                    await output.WriteLineAsync(($"PID: {report.ProcessId}{Environment.NewLine}Rundown complete: {report.RundownCompleted}{Environment.NewLine}Events lost: {report.EventsLost}{Environment.NewLine}" +
+                        string.Join(Environment.NewLine, report.Assemblies.Select(a => a.FullName))).AsMemory(), token).ConfigureAwait(false);
                 else TerminalRenderer.Render("runtime", report, output, parse.GetValue(modules));
                 return report.IsConclusive ? 0 : 2;
             }
@@ -210,7 +222,7 @@ public static class CliApplication
         if (parsed.Errors.Count != 0)
             return Error(string.Join(Environment.NewLine, parsed.Errors.Select(e => e.Message)),
                 parsed.GetValue(json), output, error, parsed.GetValue(plain));
-        if (parsed.GetValue(json) && parsed.GetValue(plain))
+        if (parsed.Action?.ClearsParseErrors != true && parsed.GetValue(json) && parsed.GetValue(plain))
             return Error("Choose either --json or --plain.", true, output, error);
         return await parsed.InvokeAsync(new InvocationConfiguration
         {

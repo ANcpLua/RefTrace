@@ -6,7 +6,7 @@ RefTrace helps you follow a package back to its source, look inside a DLL, and c
 a running app. It shows what it found and tells you when there is not enough information
 to draw a conclusion.
 
-Requires .NET 11 RC3.
+Private preview development on .NET 11 RC3.
 
 ## Install
 
@@ -93,7 +93,8 @@ uses tables and trees.
 A successful inspection means it read the input successfully. It is not a blanket claim
 that the app is safe or AOT-compatible.
 
-For report formats, exact limits, and release steps, see the [technical reference](docs/REFERENCE.md).
+For report formats and exact limits, see the [technical reference](docs/REFERENCE.md).
+For repeatable package, source and DLL comparisons, see [package audits](docs/PACKAGE-AUDIT.md).
 For the code layout and design decisions, see [architecture](ARCHITECTURE.md).
 Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 

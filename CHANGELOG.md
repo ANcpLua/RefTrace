@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0-preview.1
+
+* Target .NET 11 RC3 and use newer System.CommandLine, Pkcs and Spectre.Console previews.
+* Add NuGet-native version comparisons and an explicit C# 15 release-decision union.
+* Add repeatable uv/Make/mise package audits with hashes, pinned source probes and ILSpy comparisons.
+* Use the library help renderer for command details while retaining the short overview.
+
 ## 0.4.0
 
 * Shorten the command to `ref`, add `ref help`, and make the help overview concise.

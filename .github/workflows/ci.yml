@@ -20,6 +20,11 @@ jobs:
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.13.5"
+      - name: Test package-audit tooling
+        run: uv run --frozen python -m unittest discover -s tooling/tests -v
       - name: Build
         run: dotnet build RefTrace.slnx --configuration Release "-bl:artifacts/build-{}.binlog"
       - name: Test
