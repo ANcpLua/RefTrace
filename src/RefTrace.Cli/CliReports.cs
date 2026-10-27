@@ -3,7 +3,7 @@ using RefTrace.Runtime;
 
 namespace RefTrace.Cli;
 
-internal sealed record ReportEnvelope(int SchemaVersion, string Kind, object Data);
+internal sealed record ReportEnvelope<T>(int SchemaVersion, string Kind, T Data);
 internal sealed record ErrorReport(string Code, string Message);
 internal sealed record WhyReport(string SourcePath, string Target, DependencyTrace Trace);
 internal sealed record ProcessReport(IReadOnlyList<DiagnosticProcess> Processes);

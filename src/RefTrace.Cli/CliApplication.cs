@@ -242,8 +242,8 @@ public static class CliApplication
         return (command, file, target);
     }
 
-    private static int Execute(bool json, string kind, Func<(object Data, int ExitCode, string Text)> operation,
-        TextWriter output, TextWriter error, bool plain = false)
+    private static int Execute<T>(bool json, string kind, Func<(T Data, int ExitCode, string Text)> operation,
+        TextWriter output, TextWriter error, bool plain = false) where T : notnull
     {
         try
         {
@@ -270,8 +270,9 @@ public static class CliApplication
         return 2;
     }
 
-    private static void WriteJson(TextWriter output, string kind, object data)
-        => output.WriteLine(JsonSerializer.Serialize(new ReportEnvelope(1, kind, data), RefTraceJsonContext.Default.ReportEnvelope));
+    private static void WriteJson<T>(TextWriter output, string kind, T data)
+        => output.WriteLine(JsonSerializer.Serialize(new ReportEnvelope<T>(1, kind, data),
+            RefTraceJsonContext.Default.Options.GetTypeInfo<ReportEnvelope<T>>()));
 
     private static string RenderGraph(DependencyGraph graph)
     {

@@ -15,6 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="RefTrace.Tests" />
     <ProjectReference Include="../RefTrace.Core/RefTrace.Core.csproj" />
     <ProjectReference Include="../RefTrace.Runtime/RefTrace.Runtime.csproj" />
     <ProjectReference Include="../RefTrace.Build/RefTrace.Build.csproj" />
