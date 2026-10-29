@@ -9,8 +9,8 @@ public sealed class CliInputTests(TestContext context)
 {
     private async Task<(int Exit, string Output, string Error)> Run(params string[] arguments)
     {
-        using var output = new StringWriter();
-        using var error = new StringWriter();
+        await using var output = new StringWriter();
+        await using var error = new StringWriter();
         var exit = await CliApplication.RunAsync(arguments, output, error, context.CancellationToken);
         return (exit, output.ToString(), error.ToString());
     }

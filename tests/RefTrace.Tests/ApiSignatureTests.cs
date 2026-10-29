@@ -20,10 +20,10 @@ public sealed class ApiSignatureTests
         Assert.AreNotEqual(overloads[0].Signature, overloads[1].Signature);
         Assert.IsTrue(overloads.All(m => m.Type == "T"));
         var generic = type.Members.Single(m => m.Name == "Create");
-        Assert.AreEqual("U", generic.Type);
-        Assert.AreEqual("U", generic.GenericParameters.Single().Name);
+        Assert.AreEqual("TResult", generic.Type);
+        Assert.AreEqual("TResult", generic.GenericParameters.Single().Name);
         Assert.Contains("System.IDisposable", generic.GenericParameters.Single().Constraints);
-        Assert.Contains("where U : System.IDisposable, new()", generic.Signature);
+        Assert.Contains("where TResult : System.IDisposable, new()", generic.Signature);
     }
 
     [TestMethod]
@@ -65,10 +65,10 @@ public class SignatureFixture<T> where T : class, new()
     public SignatureFixture(string name) => Name = name;
     public T Convert(int value) => throw new NotSupportedException();
     public T Convert(string value) => throw new NotSupportedException();
-    public U Create<U>() where U : IDisposable, new() => throw new NotSupportedException();
+    public TResult Create<TResult>() where TResult : IDisposable, new() => throw new NotSupportedException();
     public T[] Transform(ref int value, out string text, in long input, int count = 42, string label = "line\nquote\"") => throw new NotSupportedException();
     public string this[int index] { get => throw new NotSupportedException(); protected set => throw new NotSupportedException(); }
-    public string Name { get; init; }
+    public string Name { get => throw new NotSupportedException(); init => throw new NotSupportedException(); }
     public event EventHandler Changed { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
     public const int Limit = 7;
     internal void Hidden() => throw new NotSupportedException();

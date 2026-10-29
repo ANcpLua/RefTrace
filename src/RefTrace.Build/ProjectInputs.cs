@@ -7,8 +7,8 @@ public sealed record ProjectInput(string? ProjectPath, string AssetsPath, string
 
 public static class ProjectInputs
 {
-    private static readonly HashSet<string> IgnoredDirectories = new(StringComparer.OrdinalIgnoreCase)
-        { ".git", ".vs", ".idea", ".venv", "node_modules", "bin", "obj", "artifacts" };
+    private static readonly HashSet<string> IgnoredDirectories = new(
+        [".git", ".vs", ".idea", ".venv", "node_modules", "bin", "obj", "artifacts"], StringComparer.OrdinalIgnoreCase);
 
     public static IReadOnlyList<string> FindProjects(string input)
     {
