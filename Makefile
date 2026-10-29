@@ -14,6 +14,6 @@ audit-catalog: build
 audit-test:
 	$(UV) run --frozen python -m unittest discover -s tooling/tests -v
 inspect:
-	jb inspectcode RefTrace.slnx --output=artifacts/inspectcode.sarif
+	jb inspectcode RefTrace.slnx --swea --settings=RefTrace.sln.DotSettings --output=artifacts/inspectcode.sarif
 pack:
 	$(DOTNET) pack src/RefTrace.Cli -c Release -o artifacts/packages "-bl:artifacts/pack-{}.binlog"
