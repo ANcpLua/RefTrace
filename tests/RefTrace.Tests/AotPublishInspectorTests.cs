@@ -108,6 +108,49 @@ public sealed class AotPublishInspectorTests(TestContext context)
         }
     }
 
+    [TestMethod]
+    [DataRow(false, "incomplete-output")]
+    [DataRow(true, "cancelled")]
+    [Timeout(30000, CooperativeCancellation = true)]
+    public async Task Run_OpenInheritedPipeAfterExit_ReportsDrainDeadlineOrCallerCancellation(bool cancelCaller, string outcome)
+    {
+        var project = CreateFixtureProject("drain");
+        var directory = Path.GetDirectoryName(project)!;
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
+        var run = AotPublishInspector.RunAsync(project, "osx-arm64",
+            Path.Combine(context.TestTempDirectory!, "reports"), TimeSpan.FromSeconds(20),
+            FixtureExecutable(), cancellation.Token);
+        try
+        {
+            using var ready = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
+            ready.CancelAfter(TimeSpan.FromSeconds(10));
+            while (!File.Exists(Path.Combine(directory, "child.pid"))) await Task.Delay(20, ready.Token);
+            var parentId = int.Parse(await File.ReadAllTextAsync(Path.Combine(directory, "parent.pid"), ready.Token));
+            try
+            {
+                using var parent = Process.GetProcessById(parentId);
+                await parent.WaitForExitAsync(ready.Token);
+            }
+            catch (ArgumentException) { /* The parent exited before its PID was opened. */ }
+
+            Assert.IsFalse(run.IsCompleted, "The child still holds the inherited output pipes open.");
+            if (cancelCaller) await cancellation.CancelAsync();
+            var report = await run;
+
+            Assert.AreEqual(0, report.ExitCode);
+            Assert.AreEqual(outcome, report.Outcome);
+            Assert.AreEqual(cancelCaller ? "Output capture was cancelled." : "Output capture did not complete.",
+                await File.ReadAllTextAsync(report.LogPath, context.CancellationToken));
+        }
+        finally
+        {
+            await cancellation.CancelAsync();
+            KillFixtureIfRunning(Path.Combine(directory, "parent.pid"));
+            KillFixtureIfRunning(Path.Combine(directory, "child.pid"));
+            await run.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken.None);
+        }
+    }
+
     private string CreateFixtureProject(string name)
     {
         var directory = Path.Combine(context.TestTempDirectory!, "project with spaces");

@@ -194,7 +194,6 @@ Layout:
 * `RefTrace.Runtime`: EventPipe observation and runtime event aggregation.
 * `RefTrace.Build`: project/SDK selection, bounded process capture, publish execution and compiler evidence.
 * `RefTrace.Cli`: command parsing, Spectre.Console presentation and exit-code mapping.
-* `RefTrace.Core`: compatibility facade forwarding original public type names.
 * `RefTrace.Tests`: reader, graph, policy, metadata and CLI tests using MSTest with native MTP.
 * `RefTrace.RuntimeFixture`: a controlled child process for live-observation integration tests.
 
@@ -235,8 +234,8 @@ RefTrace is not a vulnerability scanner; a passed dependency policy is not a sec
 For the prepared GitHub Actions workflow and NuGet account setup, see [Publishing setup](PUBLISHING.md).
 
 ```sh
-dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj -c Release -o artifacts/packages -p:Version=0.6.0-preview.1
-dotnet tool install RefTrace --version 0.6.0-preview.1 --add-source ./artifacts/packages --tool-path ./artifacts/tools
+dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj -c Release -o artifacts/packages -p:Version=0.7.0-preview.1
+dotnet tool install RefTrace --version 0.7.0-preview.1 --source ./artifacts/packages --tool-path ./artifacts/tools
 ./artifacts/tools/ref --help
 ```
 
@@ -246,7 +245,7 @@ Publishing requires ownership of the NuGet package ID and your NuGet publishing 
 or configured trusted publishing. Local packaging does not reserve the ID.
 
 ```sh
-dotnet nuget push artifacts/packages/RefTrace.0.6.0-preview.1.nupkg --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY"
+dotnet nuget push artifacts/packages/RefTrace.0.7.0-preview.1.nupkg --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY"
 ```
 
 The project has no automatic publish step. `CHANGELOG.md` tracks behavior changes; package

@@ -14,10 +14,10 @@ public sealed class AssemblyInspectorTests
     {
         var report = AssemblyInspector.Read(typeof(AssemblyInspector).Assembly.Location);
         Assert.AreEqual("RefTrace.Metadata", report.Identity.Name);
-        Assert.AreEqual("0.6.0.0", report.Identity.Version);
+        Assert.AreEqual("0.7.0.0", report.Identity.Version);
         Assert.AreEqual(".NETCoreApp,Version=v11.0", report.TargetFramework);
-        Assert.AreEqual("0.6.0.0", report.FileVersion);
-        Assert.StartsWith("0.6.0", report.InformationalVersion!);
+        Assert.AreEqual("0.7.0.0", report.FileVersion);
+        Assert.StartsWith("0.7.0", report.InformationalVersion!);
         Assert.IsNull(report.Identity.PublicKeyToken);
         Assert.IsFalse(report.IsReferenceAssembly);
         Assert.IsTrue(Guid.TryParse(report.ModuleVersionId, out _));
@@ -71,6 +71,34 @@ public sealed class AssemblyInspectorTests
         Assert.IsEmpty(AssemblyInspector.Read(onType, "type.dll").AssemblyMetadata);
         using var unrelated = SafetyPe.Create([0x2a], declaredAot: true, fakeMetadataAttribute: true);
         Assert.IsEmpty(AssemblyInspector.Read(unrelated, "unrelated.dll").AssemblyMetadata);
+    }
+
+    [TestMethod]
+    public void Read_TypeForwarders_AreReportedWithoutLoadingTarget()
+    {
+        var metadata = new MetadataBuilder();
+        metadata.AddModule(0, metadata.GetOrAddString("ForwarderFixture.dll"),
+            metadata.GetOrAddGuid(new Guid("60d2c51f-1f49-4e48-9395-7d8e9e5ee2d5")), default, default);
+        metadata.AddAssembly(metadata.GetOrAddString("ForwarderFixture"),
+            new Version(1, 0, 0, 0), default, default, 0, AssemblyHashAlgorithm.None);
+        metadata.AddTypeDefinition(TypeAttributes.NotPublic, default, metadata.GetOrAddString("<Module>"),
+            default, MetadataTokens.FieldDefinitionHandle(1), MetadataTokens.MethodDefinitionHandle(1));
+        var target = metadata.AddAssemblyReference(metadata.GetOrAddString("Absent.Forwarder.Target"),
+            new Version(2, 0, 0, 0), default, default, 0, default);
+        // ECMA-335 ExportedType.Flags: tdForwarder is not exposed by TypeAttributes.
+        metadata.AddExportedType(TypeAttributes.Public | (TypeAttributes)0x00200000,
+            metadata.GetOrAddString("Forwarded"), metadata.GetOrAddString("Example"), target, 0);
+        var builder = new ManagedPEBuilder(new PEHeaderBuilder(imageCharacteristics: Characteristics.Dll),
+            new MetadataRootBuilder(metadata), new BlobBuilder(), flags: CorFlags.ILOnly);
+        var image = new BlobBuilder();
+        builder.Serialize(image);
+        using var stream = new MemoryStream(image.ToArray());
+
+        var report = AssemblyInspector.Read(stream, "forwarder.dll");
+
+        CollectionAssert.AreEqual(new[] { "Forwarded.Example" }, report.ForwardedTypes.ToArray());
+        Assert.AreEqual("Absent.Forwarder.Target", report.References.Single().Name);
+        Assert.IsEmpty(report.Types);
     }
 
     [TestMethod]

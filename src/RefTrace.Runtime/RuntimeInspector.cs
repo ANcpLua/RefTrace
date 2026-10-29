@@ -83,12 +83,7 @@ public static class RuntimeInspector
                 using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(2));
                 try { await session.StopAsync(cleanup.Token).ConfigureAwait(false); }
                 catch (Exception ex) when (ex is DiagnosticsClientException or IOException or OperationCanceledException) { }
-                if (!reading.IsCompleted)
-                {
-                    await session.EventStream.DisposeAsync().ConfigureAwait(false);
-                    try { await reading.WaitAsync(TimeSpan.FromSeconds(2), CancellationToken.None).ConfigureAwait(false); }
-                    catch (Exception ex) when (ex is IOException or ObjectDisposedException or TimeoutException) { }
-                }
+                await CompleteReaderAsync(reading, session.EventStream, TimeSpan.FromSeconds(2)).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
@@ -99,5 +94,21 @@ public static class RuntimeInspector
         {
             throw new InspectionException("diagnostics-unavailable", $"Cannot observe process {processId}: {ex.Message} The process must expose a compatible, accessible .NET diagnostic port. Native AOT or disabled diagnostics may not support this observation.");
         }
+    }
+
+    internal static async Task CompleteReaderAsync(Task reading, Stream stream, TimeSpan timeout)
+    {
+        // Observe the original task even if the bounded cleanup wait expires. The main
+        // capture path still propagates reader errors; cleanup must not replace that result.
+        var observed = ObserveAsync(reading);
+        try
+        {
+            if (!reading.IsCompleted) await stream.DisposeAsync().ConfigureAwait(false);
+            await observed.WaitAsync(timeout, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException or TimeoutException) { }
+
+        static async Task ObserveAsync(Task task)
+            => await task.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
     }
 }

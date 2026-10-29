@@ -7,7 +7,7 @@ on:
         description: Package version already set in Directory.Build.props
         required: true
         type: string
-        default: "0.6.0-preview.1"
+        default: "0.7.0-preview.1"
       tested_commit:
         description: Full commit SHA you accepted after trying the local preview
         required: true
@@ -84,7 +84,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          dotnet tool install RefTrace --version "$RELEASE_VERSION" --add-source artifacts/packages --tool-path artifacts/publish-smoke
+          dotnet tool install RefTrace --version "$RELEASE_VERSION" --source artifacts/packages --tool-path artifacts/publish-smoke
           ./artifacts/publish-smoke/ref --help
 
       - name: NuGet login with OIDC

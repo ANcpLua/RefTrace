@@ -10,6 +10,60 @@ public sealed class RuntimeInspectorTests(TestContext context)
     private static readonly DateTimeOffset Start = new(2026, 10, 25, 12, 0, 0, TimeSpan.Zero);
 
     [TestMethod]
+    [DataRow("completed")]
+    [DataRow("faulted")]
+    [DataRow("other-fault")]
+    [DataRow("canceled")]
+    public async Task Cleanup_CompletedReaderPreservesOutcomeWithoutClosingStream(string outcome)
+    {
+        Task reader = outcome switch
+        {
+            "faulted" => Task.FromException<bool>(new IOException("Reader failed during shutdown.")),
+            "other-fault" => Task.FromException<bool>(new InvalidOperationException("Reader state failed.")),
+            "canceled" => Task.FromCanceled<bool>(new CancellationToken(canceled: true)),
+            _ => Task.FromResult(true)
+        };
+        var status = reader.Status;
+        await using var stream = new MemoryStream();
+
+        await RuntimeInspector.CompleteReaderAsync(reader, stream, TimeSpan.Zero);
+
+        Assert.AreEqual(status, reader.Status);
+        Assert.IsTrue(stream.CanRead);
+    }
+
+    [TestMethod]
+    public async Task Cleanup_DisposesPendingReaderAndObservesItsShutdownFailure()
+    {
+        var reader = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var stream = new ReaderStream(() => reader.TrySetException(new IOException("Stream closed.")));
+
+        await RuntimeInspector.CompleteReaderAsync(reader.Task, stream, TimeSpan.FromSeconds(2));
+
+        Assert.IsFalse(stream.CanRead);
+        Assert.IsTrue(reader.Task.IsFaulted);
+    }
+
+    [TestMethod]
+    public async Task Cleanup_DeadlineDoesNotReplaceCallerCancellationOrWaitForLateReader()
+    {
+        var reader = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var stream = new MemoryStream();
+        var cancellation = new OperationCanceledException("Caller stopped the observation.");
+
+        var actual = await Assert.ThrowsExactlyAsync<OperationCanceledException>(async () =>
+        {
+            try { throw cancellation; }
+            finally { await RuntimeInspector.CompleteReaderAsync(reader.Task, stream, TimeSpan.Zero); }
+        });
+
+        Assert.AreSame(cancellation, actual);
+        Assert.IsFalse(stream.CanRead);
+        Assert.IsFalse(reader.Task.IsCompleted);
+        reader.SetException(new IOException("Late failure after cleanup's deadline."));
+    }
+
+    [TestMethod]
     public void Builder_CorrelatesOutOfOrderModulesAndSeparatesClrInstances()
     {
         var builder = new RuntimeObservationBuilder();
@@ -103,6 +157,15 @@ public sealed class RuntimeInspectorTests(TestContext context)
                     await process.WaitForExitAsync(CancellationToken.None);
                 }
             }
+        }
+    }
+
+    private sealed class ReaderStream(Action onDispose) : MemoryStream
+    {
+        public override ValueTask DisposeAsync()
+        {
+            onDispose();
+            return base.DisposeAsync();
         }
     }
 }

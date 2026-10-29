@@ -9,9 +9,6 @@ namespace RefTrace.Cli;
 
 public static partial class CliApplication
 {
-    public static int Run(string[] args, TextWriter output, TextWriter error)
-        => RunAsync(args, output, error).GetAwaiter().GetResult();
-
     public static async Task<int> RunAsync(string[] args, TextWriter output, TextWriter error,
         CancellationToken cancellationToken = default)
     {

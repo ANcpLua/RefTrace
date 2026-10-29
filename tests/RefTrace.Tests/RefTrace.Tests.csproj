@@ -3,7 +3,6 @@
     <TargetFramework>net11.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/RefTrace.Core/RefTrace.Core.csproj" />
     <ProjectReference Include="../../src/RefTrace.Cli/RefTrace.Cli.csproj" />
     <ProjectReference Include="../RefTrace.RuntimeFixture/RefTrace.RuntimeFixture.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>

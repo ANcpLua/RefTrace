@@ -22,12 +22,13 @@ public static class AssemblyInspector
         var reader = pe.GetMetadataReader();
         if (!reader.IsAssembly) throw new InspectionException("unsupported-artifact", "The file is a module, not an assembly manifest.");
         var definition = reader.GetAssemblyDefinition();
+        var names = new MetadataNames(reader);
         var attributes = new Dictionary<string, string?>(StringComparer.Ordinal);
         var isReferenceAssembly = false;
         foreach (var handle in definition.GetCustomAttributes())
         {
             var attribute = reader.GetCustomAttribute(handle);
-            var name = AttributeTypeName(reader, attribute.Constructor);
+            var name = names.Method(attribute.Constructor).Type;
             if (name == "System.Runtime.CompilerServices.ReferenceAssemblyAttribute") isReferenceAssembly = true;
             if (name is not ("System.Runtime.Versioning.TargetFrameworkAttribute"
                 or "System.Reflection.AssemblyFileVersionAttribute"
@@ -69,28 +70,6 @@ public static class AssemblyInspector
         var type = reader.GetExportedType(handle);
         if (type.Implementation.Kind == HandleKind.ExportedType)
             return ForwardedName(reader, (ExportedTypeHandle)type.Implementation) + "+" + reader.GetString(type.Name);
-        var ns = reader.GetString(type.Namespace);
-        return string.IsNullOrEmpty(ns) ? reader.GetString(type.Name) : ns + "." + reader.GetString(type.Name);
-    }
-
-    private static string? AttributeTypeName(MetadataReader reader, EntityHandle constructor)
-    {
-        if (constructor.Kind == HandleKind.MethodDefinition)
-            return TypeName(reader, reader.GetMethodDefinition((MethodDefinitionHandle)constructor).GetDeclaringType());
-        if (constructor.Kind != HandleKind.MemberReference) return null;
-        var parent = reader.GetMemberReference((MemberReferenceHandle)constructor).Parent;
-        if (parent.Kind == HandleKind.TypeDefinition) return TypeName(reader, (TypeDefinitionHandle)parent);
-        if (parent.Kind != HandleKind.TypeReference) return null;
-        var type = reader.GetTypeReference((TypeReferenceHandle)parent);
-        var ns = reader.GetString(type.Namespace);
-        return string.IsNullOrEmpty(ns) ? reader.GetString(type.Name) : ns + "." + reader.GetString(type.Name);
-    }
-
-    private static string TypeName(MetadataReader reader, TypeDefinitionHandle handle)
-    {
-        var type = reader.GetTypeDefinition(handle);
-        var declaring = type.GetDeclaringType();
-        if (!declaring.IsNil) return TypeName(reader, declaring) + "+" + reader.GetString(type.Name);
         var ns = reader.GetString(type.Namespace);
         return string.IsNullOrEmpty(ns) ? reader.GetString(type.Name) : ns + "." + reader.GetString(type.Name);
     }

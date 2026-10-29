@@ -32,14 +32,14 @@ if (args is ["publish", var project, ..])
     Console.WriteLine($"DIRECTORY {Directory.GetCurrentDirectory()}");
     Console.WriteLine("stdout Grüße 🚀");
     Console.Error.WriteLine("stderr Grüße 🚀");
-    if (Path.GetFileName(project) == "wait.csproj")
+    if (Path.GetFileName(project) is "wait.csproj" or "drain.csproj")
     {
         using var child = Process.Start(new ProcessStartInfo(Environment.ProcessPath!,
             ["--wait-child", Path.Combine(Directory.GetCurrentDirectory(), "child.pid")])
         {
             UseShellExecute = false
         }) ?? throw new InvalidOperationException("Child fixture did not start.");
-        await Task.Delay(Timeout.InfiniteTimeSpan);
+        if (Path.GetFileName(project) == "wait.csproj") await Task.Delay(Timeout.InfiniteTimeSpan);
     }
     Environment.ExitCode = Path.GetFileName(project) == "failure.csproj" ? 7 : 0;
     return;

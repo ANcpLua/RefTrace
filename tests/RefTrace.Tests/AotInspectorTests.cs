@@ -40,14 +40,4 @@ public sealed class AotInspectorTests
             AotInspector.Read(image, "native.bin");
         });
     }
-
-    [TestMethod]
-    public void CompatibilityFacade_ForwardsExistingTypeNames()
-    {
-        var type = Type.GetType("RefTrace.Core.AssemblyInspector, RefTrace.Core", throwOnError: true);
-        Assert.AreSame(typeof(AssemblyInspector), type);
-        Assert.AreEqual("RefTrace.Metadata", type!.Assembly.GetName().Name);
-        var facade = AssemblyInspector.Read(System.Reflection.Assembly.Load("RefTrace.Core").Location);
-        Assert.Contains("RefTrace.Core.AssemblyInspector", facade.ForwardedTypes);
-    }
 }

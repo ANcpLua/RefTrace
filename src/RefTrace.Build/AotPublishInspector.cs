@@ -51,7 +51,8 @@ public static partial class AotPublishInspector
             RedirectStandardError = true, UseShellExecute = false
         };
         using var process = Process.Start(start) ?? throw new InspectionException("tool-unavailable", "The dotnet process could not be started.");
-        var capture = process.ReadAllTextAsync(cancellationToken);
+        using var captureDeadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var capture = process.ReadAllTextAsync(captureDeadline.Token);
         string outcome;
         try
         {
@@ -65,14 +66,21 @@ public static partial class AotPublishInspector
             catch (InvalidOperationException) { /* The owned process exited during cancellation. */ }
             await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
         }
+        // Bound the actual pipe reads after process exit, not just a proxy wait.
+        // A descendant may still have inherited an open stdout/stderr handle.
+        captureDeadline.CancelAfter(TimeSpan.FromSeconds(5));
         string text;
         try
         {
-            var (stdout, stderr) = await capture.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken.None).ConfigureAwait(false);
+            var (stdout, stderr) = await capture.ConfigureAwait(false);
             text = stdout + Environment.NewLine + stderr;
         }
-        catch (OperationCanceledException) { text = "Output capture was cancelled."; }
-        catch (TimeoutException) { text = "Output capture did not complete."; outcome = "incomplete-output"; }
+        catch (OperationCanceledException) when (captureDeadline.IsCancellationRequested)
+        {
+            var cancelledByCaller = cancellationToken.IsCancellationRequested;
+            outcome = cancelledByCaller ? "cancelled" : "incomplete-output";
+            text = cancelledByCaller ? "Output capture was cancelled." : "Output capture did not complete.";
+        }
         var log = Path.Combine(output, $"aot-publish-{Guid.NewGuid():N}.log");
         await File.WriteAllTextAsync(log, text, CancellationToken.None).ConfigureAwait(false);
         var diagnostics = ParseDiagnostics(text);

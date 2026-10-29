@@ -1,5 +1,8 @@
 # Preview package review — 2026-10-26
 
+This is the historical migration record. See the [2026-10-29 self-review](SELF-REVIEW.md)
+for the current package decisions and validation.
+
 The application now targets .NET 11 with SDK `11.0.100-rc.3.26522.148`.
 The initial collection inspected 33 resolved package coordinates and 24 package archives.
 The follow-up collection also covered 33 coordinates. Both completed without collection

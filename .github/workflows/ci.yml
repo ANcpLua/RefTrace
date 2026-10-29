@@ -36,7 +36,7 @@ jobs:
         run: |
           set -euo pipefail
           version=$(dotnet msbuild src/RefTrace.Cli/RefTrace.Cli.csproj -getProperty:Version -nologo)
-          dotnet tool install RefTrace --version "$version" --add-source artifacts/packages --tool-path artifacts/smoke
+          dotnet tool install RefTrace --version "$version" --source artifacts/packages --tool-path artifacts/smoke
           command=./artifacts/smoke/ref
           if [[ "$RUNNER_OS" == Windows ]]; then command+=.exe; fi
           "$command" --help

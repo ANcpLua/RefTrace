@@ -87,7 +87,7 @@ new releases and source changes again; the document does not monitor them itself
 | Selected Roslyn compiler | `5.12.0-1.26522.148` | Actual compiler, rather than an inference from C# syntax |
 | Installed `.version` revision | `5254d8bcf59917edc1e1abc33bdf2442b77b1c70` | Unified `dotnet/dotnet` source revision, **not** a `dotnet/runtime` commit |
 | Unified source manifest's runtime revision | `474ed963699fc29809015392738a15231aaae2de` | Version-matched runtime source used below |
-| Repository MSTest SDK | `4.5.1` | Existing test toolchain; not newly selected by this guide |
+| Repository MSTest SDK | `4.5.2` | Newest listed stable package, verified against NuGet package bytes and source revision |
 | Meziantou.Analyzer | `3.0.317`; source `0d0970fc06d68bc46210667b0eb0ee23c441e762` | Latest listed package verified through NuGet registration/catalog; selected analyzer |
 
 Sources: [official release feed][releases], [unified source manifest][manifest].
@@ -217,7 +217,7 @@ and the rule descriptors at the recorded source revision.
 | MA0033 | No ThreadStatic on instance fields | warning, enabled | error |
 | MA0040 | Forward an available cancellation token | suggestion, enabled | warning |
 | MA0042 | Avoid blocking calls in async code | suggestion, enabled | error |
-| MA0045 | Find async alternatives in synchronous methods | suggestion, disabled | disabled; changing the API contract requires review |
+| MA0045 | Find async alternatives in eligible non-public synchronous methods; excludes public methods, overrides and interface implementations | suggestion, disabled | disabled; changing the API contract requires review |
 | MA0064 | No locking on publicly accessible instances | warning, enabled | error |
 | MA0079 | Forward an available token to async enumeration | suggestion, enabled | warning |
 | MA0080 | Enumeration token when no token is available | suggestion, disabled | disabled; signature changes require review |
@@ -476,6 +476,11 @@ behavioral tests, published benchmark numbers and an application performance mea
 are different evidence and must stay labeled separately.
 
 ### RefTrace application and validation on 2026-10-29
+
+This section records the initial implementation of the reference. The later
+[complete RefTrace self-review](SELF-REVIEW.md) applies every checklist row to the
+current code, upgrades MSTest, removes the compatibility facade and synchronous
+CLI wrapper, and records the newer validation results.
 
 `AotPublishInspector` now calls `Process.ReadAllTextAsync` for the SDK probe,
 MSBuild evaluation and publish output. This removes the hand-managed pair of stream

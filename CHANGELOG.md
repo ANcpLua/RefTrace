@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.0-preview.1
+
+* Review RefTrace with its own installed command and record all 44 async/API decisions.
+* Upgrade MSTest.Sdk to 4.5.2, including its MSTest analyzers and MTP 2.5.2 dependencies.
+* Remove the Core type-forwarding assembly; reference the owning modules directly.
+* Remove the synchronous CLI entry point and await commands throughout the CLI tests.
+* Consolidate assembly-attribute name decoding in the existing metadata reader.
+* Observe EventPipe reader failures throughout bounded cancellation cleanup.
+* Cancel and join AOT output reads when inherited pipes remain open after process exit.
+
 ## 0.6.0-preview.1
 
 * Accept project or directory inputs and resolve custom restore paths with MSBuild.

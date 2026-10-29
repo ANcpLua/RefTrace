@@ -7,10 +7,9 @@ graph is one source of evidence; it is not stretched into a model for every late
 
 ```mermaid
 flowchart TD
-    CLI[CLI: commands, JSON, terminal] --> Core[Core: compatibility facade]
-    Core --> Assets[Assets: NuGet restore adapter]
-    Core --> Metadata[Metadata: PE and IL readers]
-    Core --> Model[Model: reports and graph queries]
+    CLI[CLI: commands, JSON, terminal] --> Assets[Assets: NuGet restore adapter]
+    CLI --> Metadata[Metadata: PE and IL readers]
+    CLI --> Model[Model: reports and graph queries]
     Assets --> Model
     Metadata --> Model
     CLI --> Runtime[Runtime: EventPipe observer]
@@ -24,11 +23,9 @@ TraceEvent or Spectre dependency. `Assets` owns the NuGet client dependency. `Ru
 owns the diagnostic client and TraceEvent. `Build` owns subprocess execution. Spectre
 belongs only to the CLI. The terminal renderer never decides whether a finding is valid.
 
-Core forwards the original public types to their owning assemblies using CLR type
-forwarders. The facade is still available, but this private preview can change the forwarded APIs.
-CLI JSON schema 2 and the dependency-first `why` syntax replace the earlier contracts.
-Reflection on a forwarded type correctly reports its new defining assembly. Core is kept
-for compatibility; new integrations should reference the owning module.
+Callers reference the owning modules directly. The shared `RefTrace.Core` namespace
+contains the report and inspection API; there is no forwarding assembly.
+CLI JSON schema 2 and the dependency-first `why` syntax are the current preview contracts.
 
 `ReleaseCatalog` uses NuGet's version comparer. The C# 15 `ReleaseDecision` union keeps
 the two outcomes explicit, with exhaustive switch expressions and default-value rejection.
