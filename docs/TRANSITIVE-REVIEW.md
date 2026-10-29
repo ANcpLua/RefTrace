@@ -1,10 +1,45 @@
 # Transitive compatibility review — 2026-10-30
 
-This follow-up tested all six candidates retained by the [0.7.0 self-review](SELF-REVIEW.md).
-The owning packages and SDK are already current. Five explicit transitive pins now
-live in `Directory.Packages.props`, with `CentralPackageTransitivePinningEnabled`.
-Application Insights remains at the version selected by its owner because the newer
-major version fails an actual consumer compatibility check.
+The 0.8.0 review tested all six candidates retained by the [0.7.0 self-review](SELF-REVIEW.md).
+Five explicit transitive pins live in `Directory.Packages.props`, with
+`CentralPackageTransitivePinningEnabled`. Application Insights was initially retained
+because its newer major version failed the consumer check. The 0.8.1 follow-up below
+removes the unused test telemetry extension and Application Insights altogether.
+
+## Test telemetry removed in 0.8.1
+
+RefTrace does not use Application Insights. `MSTest.TestAdapter` 4.5.2 brings in
+`Microsoft.Testing.Extensions.Telemetry` 2.5.2, which brings in Application Insights
+2.23.0. This extension reports usage of Microsoft's test platform; it does not power
+RefTrace's EventPipe inspection, test execution, TRX reports or coverage collection.
+
+The adapter has no assembly reference to the telemetry extension. The extension's
+build props register its own generated startup hook. `Directory.Packages.props` now
+uses `PrunePackageReference` to remove the optional extension through version 2.5.2
+at restore time. Its Application Insights dependency and generated startup hook
+then disappear. The bound is deliberate: review a later adapter dependency before
+extending it. This uses NuGet's
+[restore-time pruning](https://learn.microsoft.com/nuget/consume-packages/package-references-in-project-files#prunepackagereference).
+
+The packaged `ref check` command now rejects either telemetry package in the test
+graph during CI, so a future dependency change cannot silently reintroduce them.
+The remaining MSTest extension profile still supplies TRX reporting and coverage.
+The shipped CLI never contained either removed package; its runtime dependency
+inventory is unchanged. Removal evidence is saved under
+`artifacts/telemetry-removal-20261030/`.
+
+The 0.8.1 Release build has zero warnings or errors. Normal execution and execution
+with coverage both pass all 125 tests, with zero failures or skips; coverage contains
+all six production modules. The 19 audit-tool tests pass. Across the eight current
+projects, the package graph loses exactly the two telemetry packages and gains none.
+The generated startup code and test dependency manifest contain neither extension
+registration nor telemetry dependency. A refreshed catalog covers 32 coordinates
+with zero newer candidates and zero collection failures. The dependency guard also
+rejects a deliberately forbidden installed package as a positive control.
+JetBrains inspection reports zero errors or warnings and the same 16 intentional
+metadata-fixture notes.
+
+## Initial review scope (0.8.0)
 
 The review started at `f686a2e2de5eacbe31975ca60b4ce12e9fb34a62`. Fresh NuGet listing
 receipts, package hashes, exact source, isolated probes, test results and diagnostic

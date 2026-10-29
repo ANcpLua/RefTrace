@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1-preview.1
+
+* Remove optional MSTest usage telemetry and its Application Insights dependency at restore time.
+* Check the test dependency graph with the packaged `ref` command in CI to prevent telemetry returning unnoticed.
+* Keep native test execution, TRX reporting and code coverage enabled.
+
 ## 0.8.0-preview.1
 
 * Upgrade five reviewed transitive dependencies through central package pinning.

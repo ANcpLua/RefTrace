@@ -34,6 +34,6 @@
     <None Include="../../docs/TRANSITIVE-REVIEW.md" Pack="true" PackagePath="/docs" />
     <None Include="../../LICENSE" Pack="true" PackagePath="/" />
     <None Include="../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" />
-    <None Include="../../licenses/**/*" Pack="true" PackagePath="licenses/" />
+    <None Include="../../licenses/**/*" Exclude="../../licenses/**/.DS_Store" Pack="true" PackagePath="licenses/" />
   </ItemGroup>
 </Project>

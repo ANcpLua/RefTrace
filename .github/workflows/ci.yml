@@ -41,6 +41,7 @@ jobs:
           if [[ "$RUNNER_OS" == Windows ]]; then command+=.exe; fi
           "$command" --help
           "$command" packages src/RefTrace.Cli/RefTrace.Cli.csproj --direct --json
+          "$command" check tests/RefTrace.Tests/RefTrace.Tests.csproj --forbid-package Microsoft.Testing.Extensions.Telemetry --forbid-package Microsoft.ApplicationInsights --plain
           command="$PWD/${command#./}"
           project="$PWD/src/RefTrace.Cli/RefTrace.Cli.csproj"
           cd "$RUNNER_TEMP"

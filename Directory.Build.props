@@ -5,7 +5,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- Enable the reviewed async/threading rules explicitly in .editorconfig. -->
     <MeziantouAnalysisMode>None</MeziantouAnalysisMode>
-    <Version>0.8.0-preview.1</Version>
+    <Version>0.8.1-preview.1</Version>
     <Authors>Alexander Nachtmann</Authors>
     <RepositoryUrl>https://github.com/ANcpLua/RefTrace</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
