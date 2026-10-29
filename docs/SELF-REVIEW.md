@@ -163,9 +163,9 @@ policy and compiler evidence are saved in `analyzers/ledger.json` and
 
 The final local Release build has zero warnings and errors. Native MTP executed
 **122 tests: 122 passed, zero failed or skipped**. The collector's **19 Python tests**
-passed. JetBrains inspection reports zero errors and warnings; its 17 informational
-notes refer to deliberate metadata test fixtures. The following existing and new cases
-exercise the behavior affected here:
+passed. JetBrains inspection reports zero errors and warnings. Its informational
+notes comprise 16 deliberate metadata-fixture hints and one optional collection-expression
+style suggestion in `ProjectInputs`. The following cases exercise the affected behavior:
 
 | Requirement | Evidence |
 | --- | --- |
