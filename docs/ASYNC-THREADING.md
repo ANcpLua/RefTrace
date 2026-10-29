@@ -20,7 +20,10 @@ the verified changes. Do not stop at an audit or a list of suggestions.
 1. Read AGENTS.md, global.json, project files, central package versions and existing
    changes. Record the selected SDK, compiler, runtime, TFMs, RIDs, direct packages
    and relevant resolved transitive dependencies. Preserve unrelated work.
-2. Refresh official release metadata, analyzer packages and the original article
+2. Start with ref review . --catalog-only --refresh to inventory listed package
+   candidates. Use ref review . --package 'Package.Id' --refresh for package and
+   signature evidence; review its failures and configured source-probe coverage.
+   Refresh official release metadata, analyzer packages and the original article
    series. Include new installments. Resolve exact versions and source revisions.
    Prefer the newest released compatible version, including a newer preview/RC where this
    repository permits it. Never infer availability from a documentation date,

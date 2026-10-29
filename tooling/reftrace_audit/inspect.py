@@ -18,7 +18,7 @@ def run(arguments: list[str], *, timeout: int = 120) -> str:
 
 def ref_json(ref: list[str], arguments: list[str]) -> dict:
     value = json.loads(run([*ref, *arguments, "--json"]))
-    if value.get("schemaVersion") != 1 or "data" not in value:
+    if value.get("schemaVersion") != 2 or "data" not in value:
         raise AuditError("Unsupported RefTrace report schema")
     return value["data"]
 
@@ -81,29 +81,35 @@ def package_evidence(package: str, version: str, folder: Path, cache: Cache,
 
 
 def compare(before: Path, after: Path, output: Path) -> list[str]:
-    """Textual decompilation differences, not an API compatibility verdict."""
+    """Compare declared metadata signatures and decompiled text, not compatibility."""
     reports = []
-    for path in sorted(before.glob("*.cs")):
-        other = after / path.name
-        if path.name.startswith("source-") or not other.exists():
+    for name in sorted({p.name for root in (before, after) for p in root.glob("*.cs") if not p.name.startswith("source-")}):
+        left, right = before / name, after / name
+        old = left.read_text().splitlines(True) if left.exists() else []
+        new = right.read_text().splitlines(True) if right.exists() else []
+        diff = "".join(difflib.unified_diff(old, new, fromfile=str(left), tofile=str(right)))
+        if diff:
+            target = output / (name + ".diff")
+            target.write_text(diff)
+            reports.append(str(target))
+
+    def signatures(path: Path) -> set[str]:
+        if not path.exists():
+            return set()
+        report = json.loads(path.read_text())
+        result = set()
+        for entry in report["types"]:
+            header = {key: entry.get(key) for key in ("name", "kind", "baseType", "interfaces", "genericParameters")}
+            result.add("type " + json.dumps(header, sort_keys=True, separators=(",", ":")))
+            result.update(f'{entry["name"]}::{member["signature"]}' for member in entry["members"])
+        return result
+
+    for name in sorted({p.name for root in (before, after) for p in root.glob("*.assembly.json")}):
+        old, new = signatures(before / name), signatures(after / name)
+        if old == new:
             continue
-        diff = "".join(difflib.unified_diff(path.read_text().splitlines(True),
-                    other.read_text().splitlines(True), fromfile=str(path), tofile=str(other)))
-        target = output / (path.stem + ".diff")
-        target.write_text(diff)
-        reports.append(str(target))
-    for path in sorted(before.glob("*.assembly.json")):
-        other = after / path.name
-        if not other.exists():
-            continue
-        def names(file: Path) -> set[str]:
-            report = json.loads(file.read_text())
-            return {entry["name"] for entry in report["types"]} | {
-                f'{entry["name"]}::{member["kind"]}:{member["name"]}:{member["isStatic"]}'
-                for entry in report["types"] for member in entry["members"]}
-        old, new = names(path), names(other)
-        target = output / (path.stem + ".names-diff.json")
+        target = output / (Path(name).stem + ".api-diff.json")
         target.write_text(json.dumps({"added": sorted(new - old), "removed": sorted(old - new),
-            "scope": "public names and member kinds; not overload signatures or binary compatibility"}, indent=2))
+            "scope": "declared public/protected metadata signatures; not binary or source compatibility"}, indent=2))
         reports.append(str(target))
     return reports

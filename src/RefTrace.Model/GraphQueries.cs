@@ -37,14 +37,14 @@ public static class GraphQueries
     {
         if (forbiddenPackages.Count + forbiddenProjects.Count == 0
             || forbiddenPackages.Concat(forbiddenProjects).Any(string.IsNullOrWhiteSpace))
-            throw new InspectionException("Specify at least one nonempty --forbid-package or --forbid-project pattern.");
+            throw new InspectionException("invalid-argument", "Specify at least one nonempty --forbid-package or --forbid-project pattern.");
         if (graph.UnresolvedDeclarations.Count != 0)
-            throw new InspectionException("Cannot certify dependency isolation: some declared dependencies are absent from the selected target (possibly pruned). Inspect unresolvedDeclarations first.");
+            throw new InspectionException("inconclusive-policy", "Cannot certify dependency isolation: some declared dependencies are absent from the selected target (possibly pruned). Inspect unresolvedDeclarations first.");
         var unresolved = graph.Nodes.Where(n => n.Kind == "unresolved").Select(n => n.Id)
             .Order(StringComparer.OrdinalIgnoreCase).ToArray();
         if (unresolved.Any(id => forbiddenPackages.Concat(forbiddenProjects)
             .Any(pattern => FileSystemName.MatchesSimpleExpression(pattern, id, ignoreCase: true))))
-            throw new InspectionException("A forbidden pattern matches an unresolved dependency constraint. No pass/fail conclusion can be drawn for that dependency.");
+            throw new InspectionException("inconclusive-policy", "A forbidden pattern matches an unresolved dependency constraint. No pass/fail conclusion can be drawn for that dependency.");
 
         var violations = new List<PolicyViolation>();
         foreach (var node in graph.Nodes)

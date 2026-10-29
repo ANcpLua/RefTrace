@@ -22,9 +22,9 @@ public static class ReflectionInspector
 
     internal static ReflectionReport Read(PEReader pe, string sourcePath)
     {
-        if (!pe.HasMetadata) throw new InspectionException("Reflection inspection requires a managed PE with IL; native code alone is not proof of reflection absence.");
+        if (!pe.HasMetadata) throw new InspectionException("unsupported-artifact", "Reflection inspection requires a managed PE with IL; native code alone is not proof of reflection absence.");
         var reader = pe.GetMetadataReader();
-        if (!reader.IsAssembly) throw new InspectionException("Expected an assembly manifest.");
+        if (!reader.IsAssembly) throw new InspectionException("unsupported-artifact", "Expected an assembly manifest.");
         var names = new MetadataNames(reader);
         var findings = new List<ReflectionFinding>();
         var count = 0;

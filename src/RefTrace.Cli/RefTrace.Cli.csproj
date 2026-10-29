@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -15,6 +15,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="../../tooling/reftrace_audit/*.py" Link="audit/reftrace_audit/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../tooling/audit-probes.json" Link="audit/probes.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <InternalsVisibleTo Include="RefTrace.Tests" />
     <ProjectReference Include="../RefTrace.Core/RefTrace.Core.csproj" />
     <ProjectReference Include="../RefTrace.Runtime/RefTrace.Runtime.csproj" />
@@ -23,6 +25,7 @@
     <PackageReference Include="Spectre.Console" />
     <None Include="../../README.md" Pack="true" PackagePath="/" />
     <None Include="../../ARCHITECTURE.md" Pack="true" PackagePath="/" />
+    <None Include="../../docs/PACKAGE-AUDIT.md" Pack="true" PackagePath="/docs" />
     <None Include="../../docs/REFERENCE.md" Pack="true" PackagePath="/docs" />
     <None Include="../../docs/ASYNC-THREADING.md" Pack="true" PackagePath="/docs" />
     <None Include="../../LICENSE" Pack="true" PackagePath="/" />

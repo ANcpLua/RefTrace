@@ -16,15 +16,16 @@ public static class AssetsInspector
     {
         var file = new LockFileFormat().Read(stream, sourcePath);
         if (file.Version is not (3 or 4) || file.Targets.Count == 0)
-            throw new InspectionException("Expected a restored project.assets.json in supported format 3 or 4 with at least one target.");
+            throw new InspectionException("invalid-artifact", "Expected a restored project.assets.json in supported format 3 or 4 with at least one target.");
         if (file.LogMessages.Any(m => m.Level == NuGet.Common.LogLevel.Error))
-            throw new InspectionException("The assets file records a failed restore. Complete a successful restore before inspection.");
+            throw new InspectionException("restore-failed", "The assets file records a failed restore. Complete a successful restore before inspection.");
 
         var matches = file.Targets.Where(t => target is null || MatchesTarget(t, target)).ToArray();
         if (matches.Length != 1)
         {
-            var choices = string.Join(", ", file.Targets.Select(t => t.Name).Order(StringComparer.Ordinal));
-            throw new InspectionException($"Select exactly one target with --framework. Available targets: {choices}.");
+            var choices = file.Targets.Select(t => t.Name).Order(StringComparer.Ordinal).ToArray();
+            throw new InspectionException(matches.Length == 0 ? "target-not-found" : "ambiguous-target",
+                "Select exactly one recorded target with --framework.", sourcePath, choices);
         }
 
         var selected = matches[0];
@@ -43,7 +44,7 @@ public static class AssetsInspector
         foreach (var library in selected.Libraries.OrderBy(l => l.Name, StringComparer.OrdinalIgnoreCase))
         {
             if (string.IsNullOrWhiteSpace(library.Name) || library.Version is null)
-                throw new InspectionException($"A library in target '{selected.Name}' has no valid name or version.");
+                throw new InspectionException("invalid-artifact", $"A library in target '{selected.Name}' has no valid name or version.");
             libraries.TryGetValue(Key(library.Name, library.Version.ToNormalizedString()), out var metadata);
             var kind = library.Type ?? metadata?.Type ?? "unknown";
             nodes.Add(new DependencyNode(
@@ -69,7 +70,7 @@ public static class AssetsInspector
             || string.Equals(g.FrameworkName, selected.TargetAlias, StringComparison.OrdinalIgnoreCase)
             || NuGetFramework.Parse(g.FrameworkName).Equals(selected.TargetFramework)).ToArray();
         if (groups.Length == 0)
-            throw new InspectionException($"No direct-dependency group was recorded for target '{selected.Name}'.");
+            throw new InspectionException("invalid-artifact", $"No direct-dependency group was recorded for target '{selected.Name}'.");
 
         foreach (var declaration in groups.SelectMany(g => g.Dependencies).Distinct(StringComparer.OrdinalIgnoreCase))
         {

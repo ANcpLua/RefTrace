@@ -8,9 +8,9 @@ test:
 	@set -eu; mkdir -p artifacts; results=$$(mktemp -d artifacts/test-results.XXXXXX); \
 	$(DOTNET) test --solution RefTrace.slnx -c Release --report-trx --results-directory "$$results" "-bl:artifacts/test-{}.binlog"
 audit: build
-	$(UV) run --frozen python -m tooling.reftrace_audit --root .
+	$(DOTNET) run --project src/RefTrace.Cli -c Release --no-build -- review .
 audit-catalog: build
-	$(UV) run --frozen python -m tooling.reftrace_audit --root . --catalog-only
+	$(DOTNET) run --project src/RefTrace.Cli -c Release --no-build -- review . --catalog-only
 audit-test:
 	$(UV) run --frozen python -m unittest discover -s tooling/tests -v
 inspect:

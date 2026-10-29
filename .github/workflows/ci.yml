@@ -40,3 +40,8 @@ jobs:
           command=./artifacts/smoke/ref
           if [[ "$RUNNER_OS" == Windows ]]; then command+=.exe; fi
           "$command" --help
+          "$command" packages src/RefTrace.Cli/RefTrace.Cli.csproj --direct --json
+          command="$PWD/${command#./}"
+          project="$PWD/src/RefTrace.Cli/RefTrace.Cli.csproj"
+          cd "$RUNNER_TEMP"
+          "$command" review "$project" --catalog-only --offline --package '__no_package_matches__' --output "$RUNNER_TEMP/reftrace-review-smoke" --json

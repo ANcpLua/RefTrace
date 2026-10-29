@@ -7,7 +7,7 @@ using RefTrace.Build;
 
 namespace RefTrace.Cli;
 
-public static class CliApplication
+public static partial class CliApplication
 {
     public static int Run(string[] args, TextWriter output, TextWriter error)
         => RunAsync(args, output, error).GetAwaiter().GetResult();
@@ -34,32 +34,43 @@ public static class CliApplication
         root.Subcommands.Add(versions);
 
         var (assets, assetsFile, assetsTarget) = GraphCommand("assets", "Show the dependency graph.");
-        assets.SetAction(parse => Execute(parse.GetValue(json), "assets", () =>
+        assets.SetAction((parse, token) => ExecuteAsync(parse.GetValue(json), "assets", async () =>
         {
-            var graph = AssetsInspector.Read(parse.GetValue(assetsFile)!, parse.GetValue(assetsTarget));
+            var graph = await ReadGraphAsync(parse.GetValue(assetsFile)!, parse.GetValue(assetsTarget), token).ConfigureAwait(false);
             return (graph, 0, RenderGraph(graph));
         }, output, error, parse.GetValue(plain)));
         root.Subcommands.Add(assets);
 
         var (packagesCommand, packagesFile, packagesTarget) = GraphCommand("packages", "List resolved packages.");
-        packagesCommand.SetAction(parse => Execute(parse.GetValue(json), "packages", () =>
+        var includeAssets = new Option<bool>("--assets") { Description = "Include compile/runtime asset paths." };
+        var packagePattern = new Option<string>("--package") { Description = "Filter package IDs by glob (case-insensitive)." };
+        var directOnly = new Option<bool>("--direct") { Description = "Only list direct package dependencies." };
+        packagesCommand.Options.Add(includeAssets);
+        packagesCommand.Options.Add(packagePattern);
+        packagesCommand.Options.Add(directOnly);
+        packagesCommand.SetAction((parse, token) => ExecuteAsync(parse.GetValue(json), "packages", async () =>
         {
-            var graph = AssetsInspector.Read(parse.GetValue(packagesFile)!, parse.GetValue(packagesTarget));
+            var graph = await ReadGraphAsync(parse.GetValue(packagesFile)!, parse.GetValue(packagesTarget), token).ConfigureAwait(false);
             var direct = graph.Edges.Where(e => e.From == graph.RootId).Select(e => e.To).ToHashSet(StringComparer.OrdinalIgnoreCase);
             var report = new PackageReport(graph.SourcePath, graph.Target,
-                graph.Nodes.Where(n => n.Kind == "package").Select(n =>
-                    new PackageItem(n.Id, n.Version, direct.Contains(n.Id), n.CompileAssets, n.RuntimeAssets)).ToArray(),
+                graph.Nodes.Where(n => n.Kind == "package"
+                    && (!parse.GetValue(directOnly) || direct.Contains(n.Id))
+                    && (parse.GetValue(packagePattern) is not { } pattern || System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(pattern, n.Id, ignoreCase: true)))
+                    .Select(n => new PackageItem(n.Id, n.Version, direct.Contains(n.Id),
+                        parse.GetValue(includeAssets) ? n.CompileAssets : null, parse.GetValue(includeAssets) ? n.RuntimeAssets : null)).ToArray(),
                 graph.Nodes.Where(n => n.Kind == "unresolved").Select(n => n.Id).ToArray());
-            return (report, 0, string.Join(Environment.NewLine, report.Packages.Select(p => $"{p.Id}/{p.Version} ({(p.Direct ? "direct" : "transitive")})")));
+            return (report, 0, string.Join(Environment.NewLine, report.Packages.SelectMany(p =>
+                new[] { $"{p.Id}/{p.Version} ({(p.Direct ? "direct" : "transitive")})" }
+                    .Concat((p.CompileAssets ?? []).Select(a => "  compile: " + a))
+                    .Concat((p.RuntimeAssets ?? []).Select(a => "  runtime: " + a)))));
         }, output, error, parse.GetValue(plain)));
         root.Subcommands.Add(packagesCommand);
 
-        var (why, whyFile, whyTarget) = GraphCommand("why", "Explain a dependency.");
         var dependency = new Argument<string>("dependency") { Description = "Exact package or project library ID (case-insensitive)." };
-        why.Arguments.Add(dependency);
-        why.SetAction(parse => Execute(parse.GetValue(json), "why", () =>
+        var (why, whyFile, whyTarget) = GraphCommand("why", "Explain a dependency.", dependency);
+        why.SetAction((parse, token) => ExecuteAsync(parse.GetValue(json), "why", async () =>
         {
-            var graph = AssetsInspector.Read(parse.GetValue(whyFile)!, parse.GetValue(whyTarget));
+            var graph = await ReadGraphAsync(parse.GetValue(whyFile)!, parse.GetValue(whyTarget), token).ConfigureAwait(false);
             var trace = GraphQueries.Explain(graph, parse.GetValue(dependency)!);
             return (new WhyReport(graph.SourcePath, graph.Target, trace), trace.Found ? 0 : 1,
                 trace.Found ? RenderPath(trace.Path) : $"No dependency path to '{trace.Dependency}' in {graph.Target}.");
@@ -79,9 +90,9 @@ public static class CliApplication
         };
         check.Options.Add(packages);
         check.Options.Add(projects);
-        check.SetAction(parse => Execute(parse.GetValue(json), "check", () =>
+        check.SetAction((parse, token) => ExecuteAsync(parse.GetValue(json), "check", async () =>
         {
-            var graph = AssetsInspector.Read(parse.GetValue(checkFile)!, parse.GetValue(checkTarget));
+            var graph = await ReadGraphAsync(parse.GetValue(checkFile)!, parse.GetValue(checkTarget), token).ConfigureAwait(false);
             var report = GraphQueries.Check(graph, parse.GetValue(packages) ?? [], parse.GetValue(projects) ?? []);
             return (report, report.Passed ? 0 : 1, report.Passed
                 ? $"PASS: no forbidden dependencies in {report.Target}."
@@ -156,22 +167,22 @@ public static class CliApplication
             }
             catch (OperationCanceledException)
             {
-                return Error("Publish audit cancelled before completion.", parse.GetValue(json), output, error, parse.GetValue(plain));
+                return Error("Publish audit cancelled before completion.", parse.GetValue(json), output, error, parse.GetValue(plain), "cancelled");
             }
             catch (Exception ex) when (IsInputError(ex))
             {
-                return Error(ex.Message, parse.GetValue(json), output, error, parse.GetValue(plain));
+                return Error(ex, parse.GetValue(json), output, error, parse.GetValue(plain));
             }
         });
         aot.Subcommands.Add(publish);
         root.Subcommands.Add(aot);
 
         var sdk = new Command("sdk", "Inspect an installed SDK.");
-        var sdkDirectory = new Argument<string>("directory") { Description = "SDK version directory, for example /usr/local/share/dotnet/sdk/11.0.100-rc.2.26504.105." };
+        var sdkDirectory = new Argument<string>("input") { Description = "Project, working directory, or explicit SDK directory (default: current directory).", Arity = ArgumentArity.ZeroOrOne, DefaultValueFactory = _ => "." };
         sdk.Arguments.Add(sdkDirectory);
-        sdk.SetAction(parse => Execute(parse.GetValue(json), "sdk", () =>
+        sdk.SetAction((parse, token) => ExecuteAsync(parse.GetValue(json), "sdk", async () =>
         {
-            var report = SdkInspector.Read(parse.GetValue(sdkDirectory)!);
+            var report = SdkInspector.Read(await ProjectInputs.ResolveSdkAsync(parse.GetValue(sdkDirectory)!, token).ConfigureAwait(false));
             return (report, 0, $"SDK: {report.SdkDirectory}{Environment.NewLine}Native CLI payload: {report.NativeCliPayloadPresent}{Environment.NewLine}Roslyn: {report.RoslynInformationalVersion}");
         }, output, error, parse.GetValue(plain)));
         root.Subcommands.Add(sdk);
@@ -208,15 +219,16 @@ public static class CliApplication
             }
             catch (OperationCanceledException)
             {
-                return Error("Runtime observation cancelled.", parse.GetValue(json), output, error, parse.GetValue(plain));
+                return Error("Runtime observation cancelled.", parse.GetValue(json), output, error, parse.GetValue(plain), "cancelled");
             }
             catch (Exception ex) when (IsInputError(ex))
             {
-                return Error(ex.Message, parse.GetValue(json), output, error, parse.GetValue(plain));
+                return Error(ex, parse.GetValue(json), output, error, parse.GetValue(plain));
             }
         });
         root.Subcommands.Add(runtime);
 
+        AddReviewCommand(root, json, plain, output, error);
         CliHelp.Configure(root, output, error);
         var parsed = root.Parse(args.Length == 0 ? ["--help"] : args);
         if (parsed.Errors.Count != 0)
@@ -232,14 +244,55 @@ public static class CliApplication
         }, cancellationToken).ConfigureAwait(false);
     }
 
-    private static (Command Command, Argument<string> File, Option<string> Target) GraphCommand(string name, string description)
+    private static (Command Command, Argument<string> File, Option<string> Target) GraphCommand(string name, string description, Argument? leading = null)
     {
         var command = new Command(name, description);
-        var file = new Argument<string>("file") { Description = "Path to project.assets.json from an existing restore." };
+        var file = new Argument<string>("input") { Description = "Project, directory, or restored assets file (default: current directory).", Arity = ArgumentArity.ZeroOrOne, DefaultValueFactory = _ => "." };
         var target = new Option<string>("--framework", "-f") { Description = "Exact target key or TFM[/RID]. Required when the file has multiple targets." };
+        if (leading is not null) command.Arguments.Add(leading);
         command.Arguments.Add(file);
         command.Options.Add(target);
         return (command, file, target);
+    }
+
+    private static async Task<DependencyGraph> ReadGraphAsync(string input, string? target, CancellationToken token)
+    {
+        var resolved = await ProjectInputs.ResolveAsync(input, token).ConfigureAwait(false);
+        return AssetsInspector.Read(resolved.AssetsPath, target);
+    }
+
+    private static async Task<int> ExecuteAsync<T>(bool json, string kind, Func<Task<(T Data, int ExitCode, string Text)>> operation,
+        TextWriter output, TextWriter error, bool plain = false) where T : notnull
+    {
+        try
+        {
+            var result = await operation().ConfigureAwait(false);
+            if (json) WriteJson(output, kind, result.Data);
+            else if (plain) await output.WriteLineAsync(result.Text).ConfigureAwait(false);
+            else TerminalRenderer.Render(kind, result.Data, output);
+            return result.ExitCode;
+        }
+        catch (OperationCanceledException ex) { return Error(ex, json, output, error, plain); }
+        catch (Exception ex) when (IsInputError(ex)) { return Error(ex, json, output, error, plain); }
+    }
+
+    private static int Error(Exception exception, bool json, TextWriter output, TextWriter error, bool plain = false)
+    {
+        var code = exception switch
+        {
+            InspectionException inspection => inspection.Code,
+            OperationCanceledException => "cancelled",
+            FileNotFoundException => "file-not-found",
+            DirectoryNotFoundException => "directory-not-found",
+            UnauthorizedAccessException => "access-denied",
+            BadImageFormatException or JsonException => "invalid-artifact",
+            ArgumentException => "invalid-argument",
+            System.ComponentModel.Win32Exception => "tool-unavailable",
+            _ => "io-error"
+        };
+        return Error(exception.Message, json, output, error, plain, code,
+            exception is InspectionException specific ? specific.Input : (exception as FileNotFoundException)?.FileName,
+            (exception as InspectionException)?.Candidates);
     }
 
     private static int Execute<T>(bool json, string kind, Func<(T Data, int ExitCode, string Text)> operation,
@@ -255,23 +308,28 @@ public static class CliApplication
         }
         catch (Exception ex) when (IsInputError(ex))
         {
-            return Error(ex.Message, json, output, error, plain);
+            return Error(ex, json, output, error, plain);
         }
     }
 
     private static bool IsInputError(Exception ex) => ex is InspectionException or IOException or UnauthorizedAccessException
         or BadImageFormatException or ArgumentException or JsonException or System.ComponentModel.Win32Exception;
 
-    private static int Error(string message, bool json, TextWriter output, TextWriter error, bool plain = false)
+    private static int Error(string message, bool json, TextWriter output, TextWriter error, bool plain = false, string code = "invalid-argument", string? input = null, IReadOnlyList<string>? candidates = null)
     {
-        if (json) WriteJson(output, "error", new ErrorReport("invalid-input", message));
-        else if (plain) error.WriteLine($"error: {message}");
-        else TerminalRenderer.Render("error", new ErrorReport("invalid-input", message), error);
+        if (json) WriteJson(output, "error", new ErrorReport(code, message, input, candidates));
+        else if (plain)
+        {
+            error.WriteLine($"error [{code}]: {message}");
+            if (input is not null) error.WriteLine($"Input: {input}");
+            foreach (var candidate in candidates ?? []) error.WriteLine($"  {candidate}");
+        }
+        else TerminalRenderer.Render("error", new ErrorReport(code, message, input, candidates), error);
         return 2;
     }
 
     private static void WriteJson<T>(TextWriter output, string kind, T data)
-        => output.WriteLine(JsonSerializer.Serialize(new ReportEnvelope<T>(1, kind, data),
+        => output.WriteLine(JsonSerializer.Serialize(new ReportEnvelope<T>(2, kind, data),
             RefTraceJsonContext.Default.Options.GetTypeInfo<ReportEnvelope<T>>()));
 
     private static string RenderGraph(DependencyGraph graph)
@@ -307,7 +365,7 @@ public static class CliApplication
         foreach (var type in report.Types)
         {
             lines.Add($"Type: {type.Name}");
-            lines.AddRange(type.Members.Select(m => $"  {(m.IsStatic ? "static " : "")}{m.Kind} {m.Name}"));
+            lines.AddRange(type.Members.Select(m => $"  {m.Signature}"));
         }
         return string.Join(Environment.NewLine, lines);
     }

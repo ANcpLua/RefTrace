@@ -24,13 +24,13 @@ public static partial class AotPublishInspector
         var project = Path.GetFullPath(projectPath);
         var requestedOutput = Path.GetFullPath(outputDirectory);
         if (!File.Exists(project) || !project.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
-            throw new InspectionException("Specify an existing .csproj for the opt-in Native AOT publish audit.");
-        if (string.IsNullOrWhiteSpace(rid)) throw new InspectionException("Specify a runtime identifier with --rid.");
+            throw new InspectionException("invalid-argument", "Specify an existing .csproj for the opt-in Native AOT publish audit.");
+        if (string.IsNullOrWhiteSpace(rid)) throw new InspectionException("invalid-argument", "Specify a runtime identifier with --rid.");
         if (timeout <= TimeSpan.Zero || timeout > TimeSpan.FromMinutes(30))
-            throw new InspectionException("Publish timeout must be greater than zero and at most 1800 seconds.");
+            throw new InspectionException("invalid-argument", "Publish timeout must be greater than zero and at most 1800 seconds.");
         var workingDirectory = Path.GetDirectoryName(project)!;
         if (string.Equals(requestedOutput, workingDirectory, StringComparison.Ordinal))
-            throw new InspectionException("Use a separate output directory, not the project's source directory.");
+            throw new InspectionException("invalid-argument", "Use a separate output directory, not the project's source directory.");
         var started = DateTimeOffset.UtcNow;
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(timeout);
@@ -50,7 +50,7 @@ public static partial class AotPublishInspector
             WorkingDirectory = workingDirectory, RedirectStandardOutput = true,
             RedirectStandardError = true, UseShellExecute = false
         };
-        using var process = Process.Start(start) ?? throw new InspectionException("The dotnet process could not be started.");
+        using var process = Process.Start(start) ?? throw new InspectionException("tool-unavailable", "The dotnet process could not be started.");
         var capture = process.ReadAllTextAsync(cancellationToken);
         string outcome;
         try
@@ -90,9 +90,9 @@ public static partial class AotPublishInspector
 
     private static async Task<string> SdkVersionAsync(string dotnet, string directory, CancellationToken token)
     {
-        var result = await QueryAsync(dotnet, directory, ["--version"], token).ConfigureAwait(false);
+        var result = await ProcessCapture.RunAsync(dotnet, ["--version"], directory, Timeout.InfiniteTimeSpan, token).ConfigureAwait(false);
         if (result.ExitCode != 0 || string.IsNullOrWhiteSpace(result.Output))
-            throw new InspectionException("Cannot determine the selected SDK: " + result.Error.Trim());
+            throw new InspectionException("sdk-unavailable", "Cannot determine the selected SDK: " + result.Error.Trim());
         return result.Output.Trim();
     }
 
@@ -104,7 +104,7 @@ public static partial class AotPublishInspector
              "-p:Configuration=Release", $"-p:RuntimeIdentifier={rid}", "-p:PublishAot=true",
              "-p:TreatWarningsAsErrors=true", $"-p:ArtifactsPath={artifacts}" };
         if (!string.IsNullOrWhiteSpace(targetFramework)) arguments.Add($"-p:TargetFramework={targetFramework}");
-        var result = await QueryAsync(dotnet, directory, arguments, token).ConfigureAwait(false);
+        var result = await ProcessCapture.RunAsync(dotnet, arguments, directory, Timeout.InfiniteTimeSpan, token).ConfigureAwait(false);
         return ParseEvaluation(result.Output, result.ExitCode, result.Error);
     }
 
@@ -128,30 +128,6 @@ public static partial class AotPublishInspector
             return new(phase, true, result, null);
         }
         catch (JsonException) { return new(phase, false, new Dictionary<string, string>(), "MSBuild evaluation output was not valid JSON."); }
-    }
-
-    private static async Task<(int ExitCode, string Output, string Error)> QueryAsync(string dotnet, string directory,
-        IReadOnlyList<string> arguments, CancellationToken token)
-    {
-        var start = new ProcessStartInfo(dotnet, arguments)
-        {
-            WorkingDirectory = directory, RedirectStandardOutput = true,
-            RedirectStandardError = true, UseShellExecute = false
-        };
-        using var process = Process.Start(start) ?? throw new InspectionException("Cannot determine the selected SDK.");
-        var capture = process.ReadAllTextAsync(token);
-        try { await process.WaitForExitAsync(token).ConfigureAwait(false); }
-        catch (OperationCanceledException)
-        {
-            try { if (!process.HasExited) process.Kill(entireProcessTree: true); }
-            catch (InvalidOperationException) { }
-            await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
-            try { await capture.ConfigureAwait(false); }
-            catch (OperationCanceledException) { }
-            throw;
-        }
-        var (output, error) = await capture.ConfigureAwait(false);
-        return (process.ExitCode, output, error);
     }
 
     public static IReadOnlyList<PublishDiagnostic> ParseDiagnostics(string text)

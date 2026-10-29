@@ -27,7 +27,7 @@ public sealed class CliTests(TestContext context)
         Assert.AreEqual(0, result.Exit);
         Assert.AreEqual("", result.Error);
         using var json = JsonDocument.Parse(result.Output);
-        Assert.AreEqual(1, json.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.AreEqual(2, json.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.AreEqual("assets", json.RootElement.GetProperty("kind").GetString());
         Assert.AreEqual("net10.0", json.RootElement.GetProperty("data").GetProperty("framework").GetString());
         Assert.AreEqual(4, json.RootElement.GetProperty("data").GetProperty("nodes").GetArrayLength());
@@ -37,10 +37,10 @@ public sealed class CliTests(TestContext context)
     public void Why_KnownAndMissingDependencies_HaveDistinctExitCodes()
     {
         var path = AssetsFile();
-        var found = Run("why", path, "Beta", "--plain");
+        var found = Run("why", "Beta", path, "--plain");
         Assert.AreEqual(0, found.Exit);
         Assert.Contains("App.Core/1.0.0 -> Alpha/2.0.0 -> Beta/3.0.0", found.Output);
-        var missing = Run("why", path, "Absent", "--json");
+        var missing = Run("why", "Absent", path, "--json");
         Assert.AreEqual(1, missing.Exit);
         using var json = JsonDocument.Parse(missing.Output);
         Assert.IsFalse(json.RootElement.GetProperty("data").GetProperty("trace").GetProperty("found").GetBoolean());
@@ -68,7 +68,7 @@ public sealed class CliTests(TestContext context)
         Assert.AreEqual("", missing.Error);
         var invalid = Run("assets", "unused.json", "--unknown", "--json");
         Assert.AreEqual(2, invalid.Exit);
-        Assert.Contains("invalid-input", invalid.Output);
+        Assert.Contains("invalid-argument", invalid.Output);
     }
 
     [TestMethod]
@@ -87,7 +87,8 @@ public sealed class CliTests(TestContext context)
     {
         var result = Run("--help");
         Assert.AreEqual(0, result.Exit);
-        Assert.Contains("assets <file>", result.Output);
+        Assert.Contains("assets [<input>]", result.Output);
+        Assert.Contains("review [<input>]", result.Output);
         Assert.Contains("assembly <file>", result.Output);
         var commandHelp = Run("assembly", "--help");
         Assert.AreEqual(0, commandHelp.Exit);

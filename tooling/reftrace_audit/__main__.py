@@ -1,25 +1,28 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import hashlib
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+import re
 import shutil
 import sys
 import subprocess
 from urllib.error import URLError
-import xml.etree.ElementTree as ET
 
 from .inspect import compare, package_evidence, ref_json, run
 from .nuget import AuditError, Cache, service_urls
 
 
-def inventory(root: Path, ref: list[str]) -> list[dict]:
+def inventory(manifest: dict, ref: list[str]) -> list[dict]:
     records: dict[tuple[str, str], dict] = {}
 
     def add(name: str, version: str, origin: str, direct: bool = False) -> None:
+        if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]*", name) or not re.fullmatch(r"[0-9][A-Za-z0-9.+_-]*", version):
+            raise AuditError(f"Invalid package coordinate: {name}/{version}")
         key = (name.lower(), version.lower())
         row = records.setdefault(key, {"package": name, "current": version,
                                       "direct": False, "origins": []})
@@ -27,43 +30,52 @@ def inventory(root: Path, ref: list[str]) -> list[dict]:
         if origin not in row["origins"]:
             row["origins"].append(origin)
 
-    for item in ET.parse(root / "Directory.Packages.props").iter():
-        if item.tag.split("}")[-1] == "PackageVersion":
-            add(item.attrib["Include"], item.attrib["Version"], "Directory.Packages.props", True)
-    config = json.loads((root / "global.json").read_text())
-    for name, version in config.get("msbuild-sdks", {}).items():
-        add(name, version, "global.json:msbuild-sdks", True)
-    for path in sorted((root / "artifacts/obj").glob("*/project.assets.json")):
-        targets = json.loads(path.read_text()).get("targets")
+    sdk_configs: set[Path] = set()
+    for project in manifest["projects"]:
+        path = Path(project["assetsPath"])
+        targets = json.loads(path.read_text())["targets"]
         if not isinstance(targets, dict) or not targets:
             raise AuditError(f"No restored targets in {path}")
         for target in sorted(targets):
             result = ref_json(ref, ["packages", str(path), "--framework", target])
             for package in result["packages"]:
-                add(package["id"], package["version"], f"{path.relative_to(root)}#{target}")
-    return sorted(records.values(), key=lambda r: (r["package"].lower(), r["current"]))
+                add(package["id"], package["version"], f"{path}#{target}", package["direct"])
+        for directory in Path(project["projectPath"]).parents:
+            config = directory / "global.json"
+            if config.exists():
+                sdk_configs.add(config)
+                break
+    for config in sorted(sdk_configs):
+        for name, version in json.loads(config.read_text()).get("msbuild-sdks", {}).items():
+            add(name, version, f"{config}:msbuild-sdks", True)
+    return sorted(records.values(), key=lambda row: (row["package"].lower(), row["current"]))
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Collect versioned NuGet/source/DLL evidence without changing packages.")
-    parser.add_argument("--root", type=Path, default=Path.cwd())
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--ref-assembly", type=Path, required=True)
+    parser.add_argument("--probes", type=Path, required=True)
+    parser.add_argument("--package")
     parser.add_argument("--catalog-only", action="store_true")
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--refresh", action="store_true")
     parser.add_argument("--workers", type=int, choices=range(1, 5), default=2)
     parser.add_argument("--ilspy", default="ilspycmd")
-    options = parser.parse_args()
-    root = options.root.resolve()
-    output = (options.output or root / "artifacts/package-audit" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")).resolve()
-    output.mkdir(parents=True, exist_ok=False)
-    ref = ["dotnet", str(root / "artifacts/bin/RefTrace.Cli/release/RefTrace.Cli.dll")]
+    options = parser.parse_args(argv)
+    manifest = json.loads(options.manifest.read_text())
+    root = Path(manifest["root"]).resolve()
+    output = options.output.resolve()
+    if (output / "report.json").exists():
+        raise AuditError("A review report already exists in the requested output directory")
+    ref = ["dotnet", str(options.ref_assembly.resolve())]
     cache = Cache(root / "artifacts/package-audit-cache", offline=options.offline, refresh=options.refresh)
-    probes = json.loads((root / "tooling/audit-probes.json").read_text())
-    feed = service_urls(cache)
-    if not options.catalog_only and shutil.which(options.ilspy) is None:
-        raise AuditError("ilspycmd is required for DLL/source comparison")
-    rows = inventory(root, ref)
+    probes = json.loads(options.probes.read_text())
+    rows = inventory(manifest, ref)
+    if options.package:
+        rows = [row for row in rows if fnmatch.fnmatchcase(row["package"].lower(), options.package.lower())]
+    feed = service_urls(cache) if rows else {}
 
     def audit(row: dict) -> dict:
         folder = output / row["package"] / row["current"]
@@ -110,16 +122,16 @@ def main() -> int:
 
     with ThreadPoolExecutor(max_workers=options.workers) as pool:
         records = list(pool.map(audit, rows))
-    report = {"schemaVersion": 1, "collectedAt": datetime.now(timezone.utc).isoformat(),
-        "root": str(root), "packages": records,
-        "tools": {"python": sys.version.split()[0], "dotnetSdk": run(["dotnet", "--version"]).strip(),
+    report = {"schemaVersion": 2, "collectedAt": datetime.now(timezone.utc).isoformat(),
+        "root": str(root), "projects": manifest["projects"], "packages": records,
+        "tools": {"python": sys.version.split()[0], "collectorSdk": run(["dotnet", "--version"]).strip(),
             "ref": run([*ref, "--version"]).strip(),
             "refAssemblySha256": hashlib.sha256(Path(ref[1]).read_bytes()).hexdigest(),
-            "ilspy": None if options.catalog_only else run([options.ilspy, "--version"]).strip()},
+            "ilspy": run([options.ilspy, "--version"]).strip() if not options.catalog_only and shutil.which(options.ilspy) else None},
         "sources": sorted(cache.receipts.values(), key=lambda item: item["url"]),
         "limitations": ["NuGet integrity hashes are not publisher identity or reproducible-build proofs.",
             "Nuspec repository commits are package-provided provenance claims.",
-            "RefTrace reports metadata names; decompiled type diffs include method bodies and are not an API-compatibility verdict.",
+            "RefTrace reports declared metadata signatures; signature and implementation diffs are not an API-compatibility verdict.",
             "Only configured source files are retrieved. Missing source is explicitly recorded.",
             "Transitive candidates are reviewed, not injected as direct PackageReferences."]}
     report_file = output / "report.json"

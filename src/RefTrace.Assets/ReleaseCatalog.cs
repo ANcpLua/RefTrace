@@ -14,16 +14,16 @@ public static class ReleaseCatalog
     public static PackageReleaseReport Read(Stream stream, string sourcePath, string current)
     {
         if (!NuGetVersion.TryParse(current, out var installed))
-            throw new InspectionException("The current package version is not a NuGet version.");
+            throw new InspectionException("invalid-argument", "The current package version is not a NuGet version.");
         using var document = JsonDocument.Parse(stream);
         if (document.RootElement.ValueKind != JsonValueKind.Object
             || !document.RootElement.TryGetProperty("versions", out var items) || items.ValueKind != JsonValueKind.Array)
-            throw new InspectionException("Expected a NuGet flat-container index with a versions array.");
+            throw new InspectionException("invalid-artifact", "Expected a NuGet flat-container index with a versions array.", sourcePath);
         var versions = new List<NuGetVersion>();
         foreach (var item in items.EnumerateArray())
         {
             if (item.ValueKind != JsonValueKind.String || !NuGetVersion.TryParse(item.GetString(), out var version))
-                throw new InspectionException("The package index contains an invalid NuGet version.");
+                throw new InspectionException("invalid-artifact", "The package index contains an invalid NuGet version.", sourcePath);
             versions.Add(version);
         }
         var ordered = versions.Distinct(VersionComparer.VersionRelease)

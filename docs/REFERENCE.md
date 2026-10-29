@@ -7,22 +7,26 @@ Run the development commands below from the RefTrace repository root.
 
 Trace resolved .NET dependencies and inspect assembly metadata from the command line.
 RefTrace reads existing artifacts and can explicitly observe a live .NET process.
-Artifact inspection does not restore projects, load target assemblies, or invoke their code.
+Explicit artifact inspection does not restore projects, load target assemblies, or invoke their code.
+Project inputs evaluate MSBuild properties without running build targets; imported project
+configuration and property functions are evaluated in the project's existing environment.
 Live observation is a separate command using the target's diagnostics endpoint.
 
-Requires the .NET 10 runtime. Development uses the SDK pinned in `global.json`.
+Requires the .NET 11 RC3 runtime. Development uses the SDK pinned in `global.json`.
 
 ## Commands
 
 ```sh
 ref assets path/to/project.assets.json --framework net10.0
 ref packages path/to/project.assets.json --framework net10.0
-ref why path/to/project.assets.json System.Security.Cryptography.Pkcs --framework net10.0
+ref why System.Security.Cryptography.Pkcs path/to/project.assets.json --framework net10.0
 ref check path/to/project.assets.json --forbid-package 'Basic.Reference.Assemblies.*'
 ref check path/to/project.assets.json --forbid-project '*Other.Tests.csproj'
 ref assembly path/to/library.dll
 ref assembly path/to/library.dll --type 'Some.Namespace.Outer+Nested'
-ref sdk /usr/local/share/dotnet/sdk/11.0.100-rc.2.26504.105
+ref sdk path/to/App.csproj
+ref review . --catalog-only
+ref review path/to/App.csproj --refresh --package 'NuGet.*'
 ref processes
 ref runtime --pid 12345 --seconds 1 --timeout 30 --modules
 ref reflection path/to/library.dll --json
@@ -42,7 +46,19 @@ followed by the generic parameter count.
 
 `--framework` accepts an exact recorded target name, a TFM, or a TFM/RID such as
 `net10.0/linux-x64`. If an artifact has more than one matching target, selection is required.
-The `why` command shows one deterministic shortest path, including the root project.
+The `why` command takes the dependency first and shows one deterministic shortest path,
+including the root project. `assets`, `packages`, `why` and `check` accept an optional input:
+project file, directory containing one project, or explicit assets JSON. Omission means
+`.`. Directory discovery excludes build outputs, version-control folders and symlinked
+subdirectories. Multiple projects produce `ambiguous-project` with candidate paths;
+`review` intentionally includes all discovered projects. MSBuild's evaluated
+`ProjectAssetsFile` is honored, and its recorded project identity must match the input.
+Missing or mismatched restore evidence requires the caller to restore the project.
+
+`packages` omits asset arrays by default. `--assets` includes them, `--direct` restricts
+the result to direct dependencies, and `--package` filters IDs by a case-insensitive glob.
+JSON and plain output retain full values. A filter with no matches produces an empty list.
+See [package reviews](PACKAGE-AUDIT.md) for `review` and its saved evidence contract.
 
 `reflection` reads actual managed IL instructions. Its versioned catalog identifies known
 reflection, dynamic loading and dynamic-code method references with caller tokens and IL
@@ -94,8 +110,14 @@ does not establish AOT compatibility.
   file/informational versions, assembly-level metadata keys, reference-assembly markers,
   debug-directory entry kinds and static assembly references. A CodeView entry is debug
   evidence, not a Native AOT verdict. Attribute matching includes namespace and assembly scope.
-  Public/protected declared member names are available with `--type`. This is not a full
-  signature/API compatibility comparison or an IL decompiler.
+  Public/protected declared signatures are available with `--type`. Each member includes
+  kind, accessibility, static status, value/return type, parameter names/types/ref-kinds,
+  optional/default constants, generic constraints, visible accessors and a readable
+  `signature`. Types include kind, base type, interfaces and generic constraints.
+  Constructors, fields and events are included; property/event accessors are not repeated
+  as methods. This is metadata evidence, not a binary/source compatibility verdict.
+  Inherited members, nullable annotations and other custom-attribute semantics are not
+  expanded. Names use metadata generic arity; type names do not encode assembly scope.
 * **Runtime observation:** `processes` lists processes advertising .NET diagnostics.
   `runtime` attaches to an explicitly chosen PID, observes loader events for `--seconds`,
   then requests CLR rundown so previously loaded assemblies can also be reported.
@@ -109,7 +131,9 @@ does not establish AOT compatibility.
   prevent observation. An unavailable endpoint is not evidence that no assemblies exist.
   Collection enables loader events and can affect the target's timing; it does not inject
   the observer's Spectre.Console/diagnostics dependencies into that process.
-* **SDK files:** `sdk` reads the supplied SDK directory and reports known native CLI
+* **SDK files:** `sdk` locates the SDK selected in the supplied project/directory context
+  using `dotnet --version` and `dotnet --list-sdks`, or reads an explicit SDK installation
+  directory. It reports known native CLI
   payload files and the bundled Roslyn compiler's assembly/informational version.
   Presence does not prove activation for a particular invocation or Rider's toolset choice.
 * **Artifact limits:** neither static artifact proves dynamic loads, the SDK that performed
@@ -129,17 +153,30 @@ Every structured report has an envelope:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "assets",
   "data": {}
 }
 ```
 
 Kinds are `assets`, `packages`, `why`, `check`, `assembly`, `sdk`, `processes`, `runtime`,
-`reflection`, `aot-inspect`, `aot-publish`, and `error`. Consumers should check
+`versions`, `review`, `reflection`, `aot-inspect`, `aot-publish`, and `error`. Consumers should check
 `schemaVersion` and tolerate additional fields. Removing fields or changing their meaning
 requires a new schema version. Error data has `code` and `message`; diagnostic text is not
-a stable machine-readable identifier. Absolute evidence paths are machine-specific.
+a stable machine-readable identifier. Optional `input` identifies the input that failed;
+`candidates` contains valid project, framework or SDK choices. Codes include
+`invalid-argument`, `file-not-found`, `path-not-found`, `directory-not-found`,
+`project-not-found`, `ambiguous-project`, `ambiguous-target`, `target-not-found`,
+`restore-required`, `mismatched-assets`, `restore-failed`, `evaluation-failed`,
+`sdk-unavailable`, `ambiguous-sdk`, `tool-unavailable`, `output-exists`, `review-failed`,
+`invalid-artifact`, `unsupported-artifact`, `inconclusive-policy`, `diagnostics-unavailable`,
+`access-denied`, `io-error`, `timeout` and `cancelled`. Absolute paths are machine-specific.
+
+Schema 2 removes the old compact member-name records, omits unrequested package asset
+arrays, and replaces the generic `invalid-input` code with specific errors. JSON is
+written on one line. This private preview deliberately makes no schema-1 compatibility
+promise. A review with per-package failures still returns its `review` report and exit 1;
+its detailed saved `report.json` has its own schema version 2.
 
 ## Develop and test
 
@@ -155,7 +192,7 @@ Layout:
 * `RefTrace.Metadata`: PE/IL readers, SDK evidence and static reflection/AOT inspection.
 * `RefTrace.Assets`: NuGet restore-file adapter.
 * `RefTrace.Runtime`: EventPipe observation and runtime event aggregation.
-* `RefTrace.Build`: explicit publish execution and compiler evidence.
+* `RefTrace.Build`: project/SDK selection, bounded process capture, publish execution and compiler evidence.
 * `RefTrace.Cli`: command parsing, Spectre.Console presentation and exit-code mapping.
 * `RefTrace.Core`: compatibility facade forwarding original public type names.
 * `RefTrace.Tests`: reader, graph, policy, metadata and CLI tests using MSTest with native MTP.
@@ -198,8 +235,8 @@ RefTrace is not a vulnerability scanner; a passed dependency policy is not a sec
 For the prepared GitHub Actions workflow and NuGet account setup, see [Publishing setup](PUBLISHING.md).
 
 ```sh
-dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj -c Release -o artifacts/packages -p:Version=0.4.0
-dotnet tool install RefTrace --version 0.4.0 --add-source ./artifacts/packages --tool-path ./artifacts/tools
+dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj -c Release -o artifacts/packages -p:Version=0.6.0-preview.1
+dotnet tool install RefTrace --version 0.6.0-preview.1 --add-source ./artifacts/packages --tool-path ./artifacts/tools
 ./artifacts/tools/ref --help
 ```
 
@@ -209,7 +246,7 @@ Publishing requires ownership of the NuGet package ID and your NuGet publishing 
 or configured trusted publishing. Local packaging does not reserve the ID.
 
 ```sh
-dotnet nuget push artifacts/packages/RefTrace.0.4.0.nupkg --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY"
+dotnet nuget push artifacts/packages/RefTrace.0.6.0-preview.1.nupkg --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY"
 ```
 
 The project has no automatic publish step. `CHANGELOG.md` tracks behavior changes; package

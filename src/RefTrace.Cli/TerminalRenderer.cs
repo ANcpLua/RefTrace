@@ -40,6 +40,13 @@ internal static class TerminalRenderer
                 foreach (var package in packages.Packages)
                     inventory.AddRow(Text(package.Direct ? "direct" : "transitive"), Text(package.Id), Text(package.Version));
                 console.Write(inventory);
+                foreach (var package in packages.Packages.Where(p => p.CompileAssets is not null))
+                {
+                    var assets = new Tree(Text(package.Id));
+                    foreach (var asset in package.CompileAssets!) assets.AddNode(Text("compile: " + asset));
+                    foreach (var asset in package.RuntimeAssets ?? []) assets.AddNode(Text("runtime: " + asset));
+                    console.Write(assets);
+                }
                 console.MarkupLine($"[dim]{packages.Packages.Count} resolved packages · exact selected target[/]");
                 if (packages.UnresolvedDependencies.Count != 0)
                     Note(console, "Unresolved constraints: " + string.Join(", ", packages.UnresolvedDependencies));
@@ -88,7 +95,7 @@ internal static class TerminalRenderer
                 {
                     var tree = new Tree(Text(type.Name));
                     foreach (var member in type.Members)
-                        tree.AddNode(Text($"{(member.IsStatic ? "static " : "")}{member.Kind} {member.Name}"));
+                        tree.AddNode(Text(member.Signature));
                     console.Write(tree);
                 }
                 if (assembly.ForwardedTypes.Count != 0)
@@ -183,8 +190,18 @@ internal static class TerminalRenderer
                 if (audit.BinlogPath is not null) Note(console, "MSBuild binary log: " + audit.BinlogPath);
                 foreach (var limit in audit.Limitations) Note(console, limit);
                 break;
+            case ReviewReport review:
+                var reviewTable = Table("Package", "Current", "Selected", "Status");
+                foreach (var package in review.Packages)
+                    reviewTable.AddRow(Text(package.Package), Text(package.Current), Text(package.Selected ?? "unknown"), Text(package.Status));
+                console.Write(reviewTable);
+                Note(console, $"{review.PackageCount} packages; {review.UpdateCount} newer candidates; {review.FailureCount} incomplete.");
+                Note(console, "Evidence: " + review.ReportPath);
+                break;
             case ErrorReport error:
-                console.Write(new Panel(Text(error.Message)).Header("[red]Unable to conclude[/]").BorderColor(Color.Red));
+                console.Write(new Panel(Text($"{error.Code}: {error.Message}")).Header("[red]Unable to conclude[/]").BorderColor(Color.Red));
+                if (error.Input is not null) Note(console, "Input: " + error.Input);
+                foreach (var choice in error.Candidates ?? []) Note(console, choice);
                 break;
         }
         console.WriteLine();

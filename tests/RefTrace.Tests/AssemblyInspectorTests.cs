@@ -14,10 +14,10 @@ public sealed class AssemblyInspectorTests
     {
         var report = AssemblyInspector.Read(typeof(AssemblyInspector).Assembly.Location);
         Assert.AreEqual("RefTrace.Metadata", report.Identity.Name);
-        Assert.AreEqual("0.5.0.0", report.Identity.Version);
+        Assert.AreEqual("0.6.0.0", report.Identity.Version);
         Assert.AreEqual(".NETCoreApp,Version=v11.0", report.TargetFramework);
-        Assert.AreEqual("0.5.0.0", report.FileVersion);
-        Assert.StartsWith("0.5.0", report.InformationalVersion!);
+        Assert.AreEqual("0.6.0.0", report.FileVersion);
+        Assert.StartsWith("0.6.0", report.InformationalVersion!);
         Assert.IsNull(report.Identity.PublicKeyToken);
         Assert.IsFalse(report.IsReferenceAssembly);
         Assert.IsTrue(Guid.TryParse(report.ModuleVersionId, out _));
@@ -30,7 +30,10 @@ public sealed class AssemblyInspectorTests
     {
         var report = AssemblyInspector.Read(typeof(ApiFixture).Assembly.Location, "RefTrace.Tests.ApiFixture*");
         var type = report.Types.Single(t => t.Name == "RefTrace.Tests.ApiFixture");
-        Assert.Contains(new ApiMember(nameof(ApiFixture.Dangerous), "property", true), type.Members);
+        var property = type.Members.Single(m => m.Name == nameof(ApiFixture.Dangerous));
+        Assert.AreEqual("property", property.Kind);
+        Assert.IsTrue(property.IsStatic);
+        Assert.AreEqual("System.String", property.Type);
         Assert.IsFalse(type.Members.Any(m => m.Name == nameof(ApiFixture.Hidden)));
         Assert.Contains($"{typeof(ApiFixture).FullName}+{nameof(ApiFixture.Nested)}", report.Types.Select(t => t.Name));
         Assert.IsFalse(report.Types.Any(t => t.Name.Contains("PrivateNested", StringComparison.Ordinal)));

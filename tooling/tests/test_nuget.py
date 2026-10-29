@@ -18,16 +18,16 @@ class EvidenceTests(unittest.TestCase):
     def test_inventory_preserves_each_restored_target_context(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "Directory.Packages.props").write_text("<Project/>")
             (root / "global.json").write_text("{}")
-            path = root / "artifacts/obj/Example/project.assets.json"
+            path = root / "custom-restore/Example/assets.json"
             path.parent.mkdir(parents=True)
             path.write_text(json.dumps({"targets": {"net10.0": {}, "net11.0/linux-x64": {}}}))
             with patch("tooling.reftrace_audit.__main__.ref_json", return_value={
-                    "packages": [{"id": "Example", "version": "1.0.0"}]}):
-                rows = inventory(root, ["ref"])
+                    "packages": [{"id": "Example", "version": "1.0.0", "direct": True}]}):
+                rows = inventory({"projects": [{"projectPath": str(root / "Example.csproj"), "assetsPath": str(path)}]}, ["ref"])
             self.assertEqual(1, len(rows))
             self.assertEqual(2, len(rows[0]["origins"]))
+            self.assertTrue(rows[0]["direct"])
             self.assertTrue(any(origin.endswith("#net11.0/linux-x64") for origin in rows[0]["origins"]))
 
     def test_hash_accepts_exact_bytes_and_rejects_changed_payload(self):
@@ -133,19 +133,19 @@ class EvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(AuditError, "Command failed"):
             run([sys.executable, "-c", "raise SystemExit(9)"])
 
-    def test_public_name_diff_reports_added_and_removed_members(self):
+    def test_signature_diff_detects_changed_overload_with_same_member_name(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             before, after = root / "before", root / "after"
             before.mkdir(); after.mkdir()
-            for folder, member in [(before, "Old"), (after, "New")]:
+            for folder, parameter in [(before, "System.Int32"), (after, "System.String")]:
                 report = {"types": [{"name": "Example", "members": [
-                    {"name": member, "kind": "method", "isStatic": True}]}]}
+                    {"name": "Run", "signature": f"public System.Void Run({parameter} value)"}]}]}
                 (folder / "Example.assembly.json").write_text(json.dumps(report))
             paths = compare(before, after, root)
             report = json.loads(Path(paths[0]).read_text())
-            self.assertEqual(["Example::method:New:True"], report["added"])
-            self.assertEqual(["Example::method:Old:True"], report["removed"])
+            self.assertEqual(["Example::public System.Void Run(System.String value)"], report["added"])
+            self.assertEqual(["Example::public System.Void Run(System.Int32 value)"], report["removed"])
 
 
 if __name__ == "__main__":

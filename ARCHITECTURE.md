@@ -15,7 +15,7 @@ flowchart TD
     Metadata --> Model
     CLI --> Runtime[Runtime: EventPipe observer]
     Runtime --> Model
-    CLI --> Build[Build: explicit publish audit]
+    CLI --> Build[Build: project inputs and publish audit]
     Build --> Model
 ```
 
@@ -25,14 +25,20 @@ owns the diagnostic client and TraceEvent. `Build` owns subprocess execution. Sp
 belongs only to the CLI. The terminal renderer never decides whether a finding is valid.
 
 Core forwards the original public types to their owning assemblies using CLR type
-forwarders. Existing fully-qualified C# type names and CLI/JSON contracts remain usable.
+forwarders. The facade is still available, but this private preview can change the forwarded APIs.
+CLI JSON schema 2 and the dependency-first `why` syntax replace the earlier contracts.
 Reflection on a forwarded type correctly reports its new defining assembly. Core is kept
 for compatibility; new integrations should reference the owning module.
 
 `ReleaseCatalog` uses NuGet's version comparer. The C# 15 `ReleaseDecision` union keeps
 the two outcomes explicit, with exhaustive switch expressions and default-value rejection.
-The Python package-audit collector calls RefTrace and ILSpy and stores their evidence;
+The installed `ref review` command evaluates the target projects, writes an input manifest,
+and launches its bundled Python collector. The collector calls the same installed
+RefTrace DLL and optional ILSpy probes and stores their evidence;
 it does not implement a second NuGet version parser or mutate dependency pins.
+`ProjectInputs` resolves assets through MSBuild rather than assuming an output layout.
+`ApiSurface` decodes declared signatures from metadata without loading the inspected DLL.
+`ProcessCapture` owns cancellation, deadlines, child termination and both output pipes.
 
 ## Report serialization and usage analysis
 
@@ -68,8 +74,8 @@ executable. A dependency-policy pass is not a vulnerability/security verdict.
   operand boundaries, framework facades, generic calls and known benign cases.
 * Do not hide compiler diagnostics or turn missing metadata/rundown into a successful check.
 * Keep package SemVer, JSON schema version and reflection catalog version independent.
-* Preserve JSON fields or bump the schema; preserve shipped type identity with forwarding
-  or make an explicit major-version API decision.
+* Bump the JSON schema when fields change meaning. Before the first public release,
+  change APIs directly and update their consumers rather than adding compatibility layers.
 * Native AOT validation belongs to an application with a concrete RID and reachable code.
   Keep metadata-only validation separate from the full CLI/diagnostics dependency closure.
 * Audit existing projects in their original SDK/feed/environment context. Isolating a

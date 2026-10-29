@@ -7,7 +7,7 @@ on:
         description: Package version already set in Directory.Build.props
         required: true
         type: string
-        default: "0.5.0-preview.1"
+        default: "0.6.0-preview.1"
       tested_commit:
         description: Full commit SHA you accepted after trying the local preview
         required: true

@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using RefTrace.Build;
 using RefTrace.Cli;
@@ -15,45 +14,43 @@ public sealed class JsonEnvelopeTests
     [TestMethod]
     [DataRow(1)]
     [DataRow(20)]
-    public void PackageEnvelope_PreservesLegacyJsonAndHasGeneratedWriter(int count)
+    public void PackageEnvelope_IsCompactAndOmitsUnrequestedAssets(int count)
     {
         var report = new PackageReport("/path/quoted \"and\" café.assets.json", "net11.0",
-            Enumerable.Range(0, count).Select(index => new PackageItem($"Package.{index}", "1.0.0", index == 0,
-                ["lib/net11.0/package.dll"], [])).ToArray(), []);
-        var expected = JsonSerializer.Serialize(new PreviousEnvelope(1, "packages", report),
-            PreviousJsonContext.Default.PreviousEnvelope);
+            Enumerable.Range(0, count).Select(index => new PackageItem($"Package.{index}", "1.0.0", index == 0)).ToArray(), []);
         var info = RefTraceJsonContext.Default.Options.GetTypeInfo<ReportEnvelope<PackageReport>>();
+        var actual = JsonSerializer.Serialize(new ReportEnvelope<PackageReport>(2, "packages", report), info);
 
-        var actual = JsonSerializer.Serialize(new ReportEnvelope<PackageReport>(1, "packages", report), info);
-
-        Assert.AreEqual(expected, actual);
         Assert.IsNotNull(info.SerializeHandler);
+        Assert.DoesNotContain("\n", actual);
         using var document = JsonDocument.Parse(actual);
-        Assert.AreEqual(1, document.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.AreEqual(2, document.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.AreEqual("packages", document.RootElement.GetProperty("kind").GetString());
-        Assert.AreEqual(count, document.RootElement.GetProperty("data").GetProperty("packages").GetArrayLength());
-        Assert.AreEqual(report.SourcePath, document.RootElement.GetProperty("data").GetProperty("sourcePath").GetString());
+        var data = document.RootElement.GetProperty("data");
+        Assert.AreEqual(count, data.GetProperty("packages").GetArrayLength());
+        Assert.AreEqual(report.SourcePath, data.GetProperty("sourcePath").GetString());
+        Assert.IsFalse(data.GetProperty("packages")[0].TryGetProperty("compileAssets", out _));
+        Assert.IsFalse(data.GetProperty("packages")[0].TryGetProperty("runtimeAssets", out _));
     }
 
     [TestMethod]
-    public void ErrorEnvelope_PreservesLegacyEscapingAndNullOmission()
+    public void ErrorEnvelope_PreservesDetailsEscapingAndNullOmission()
     {
-        var report = new ErrorReport("invalid-input", "quote \" newline\nbackslash \\");
+        var report = new ErrorReport("ambiguous-project", "quote \" newline\nbackslash \\", "/projects", ["a.csproj", "b.csproj"]);
         var info = RefTraceJsonContext.Default.Options.GetTypeInfo<ReportEnvelope<ErrorReport>>();
-        var expected = JsonSerializer.Serialize(new PreviousEnvelope(1, "error", report),
-            PreviousJsonContext.Default.PreviousEnvelope);
+        var actual = JsonSerializer.Serialize(new ReportEnvelope<ErrorReport>(2, "error", report), info);
 
-        var actual = JsonSerializer.Serialize(new ReportEnvelope<ErrorReport>(1, "error", report), info);
-
-        Assert.AreEqual(expected, actual);
         Assert.IsNotNull(info.SerializeHandler);
         using var document = JsonDocument.Parse(actual);
-        Assert.AreEqual(report.Message, document.RootElement.GetProperty("data").GetProperty("message").GetString());
-
-        var absent = JsonSerializer.Serialize(new ReportEnvelope<ErrorReport?>(1, "error", null),
-            RefTraceJsonContext.Default.Options.GetTypeInfo<ReportEnvelope<ErrorReport?>>());
+        var data = document.RootElement.GetProperty("data");
+        Assert.AreEqual(report.Message, data.GetProperty("message").GetString());
+        Assert.AreEqual("ambiguous-project", data.GetProperty("code").GetString());
+        Assert.AreEqual("/projects", data.GetProperty("input").GetString());
+        CollectionAssert.AreEqual(new[] { "a.csproj", "b.csproj" }, data.GetProperty("candidates").EnumerateArray().Select(x => x.GetString()).ToArray());
+        var absent = JsonSerializer.Serialize(new ReportEnvelope<ErrorReport>(2, "error", new("cancelled", "Cancelled")), info);
         using var absentDocument = JsonDocument.Parse(absent);
-        Assert.IsFalse(absentDocument.RootElement.TryGetProperty("data", out _));
+        Assert.IsFalse(absentDocument.RootElement.GetProperty("data").TryGetProperty("input", out _));
+        Assert.IsFalse(absentDocument.RootElement.GetProperty("data").TryGetProperty("candidates", out _));
     }
 
     [TestMethod]
@@ -67,7 +64,7 @@ public sealed class JsonEnvelopeTests
             typeof(ReportEnvelope<RuntimeReport>), typeof(ReportEnvelope<SdkReport>),
             typeof(ReportEnvelope<PackageReport>), typeof(ReportEnvelope<ReflectionReport>),
             typeof(ReportEnvelope<AotInspectionReport>), typeof(ReportEnvelope<AotPublishReport>),
-            typeof(ReportEnvelope<PackageReleaseReport>)
+            typeof(ReportEnvelope<PackageReleaseReport>), typeof(ReportEnvelope<ReviewReport>)
         ];
         foreach (var envelopeType in envelopeTypes)
         {
@@ -78,12 +75,3 @@ public sealed class JsonEnvelopeTests
         }
     }
 }
-
-internal sealed record PreviousEnvelope(int SchemaVersion, string Kind, object Data);
-
-[JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
-[JsonSerializable(typeof(PreviousEnvelope))]
-[JsonSerializable(typeof(PackageReport))]
-[JsonSerializable(typeof(ErrorReport))]
-internal partial class PreviousJsonContext : JsonSerializerContext;

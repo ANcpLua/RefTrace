@@ -16,9 +16,9 @@ public static class AotInspector
     public static AotInspectionReport Read(Stream stream, string sourcePath)
     {
         using var pe = new PEReader(stream, PEStreamOptions.LeaveOpen);
-        if (!pe.HasMetadata) throw new InspectionException("No managed metadata is available. Native format alone does not establish Native AOT provenance or compatibility.");
+        if (!pe.HasMetadata) throw new InspectionException("unsupported-artifact", "No managed metadata is available. Native format alone does not establish Native AOT provenance or compatibility.");
         var reader = pe.GetMetadataReader();
-        if (!reader.IsAssembly) throw new InspectionException("Expected an assembly manifest.");
+        if (!reader.IsAssembly) throw new InspectionException("unsupported-artifact", "Expected an assembly manifest.");
         var names = new MetadataNames(reader);
         var properties = PeMetadata.AssemblyProperties(reader);
         bool? aot = bool.TryParse(properties.GetValueOrDefault("IsAotCompatible"), out var aotFlag) ? aotFlag : null;

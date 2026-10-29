@@ -6,8 +6,9 @@ description: Compare NuGet releases with installed versions, package bytes, sour
 # Package evidence
 
 Read the repository AGENTS.md and current manifests first. Preserve existing edits.
-The durable implementation is `tooling/reftrace_audit`, run in the project's uv
-environment. Make orchestrates; mise tasks call Make. Do not install Python packages
+The installed `ref review` command bundles `tooling/reftrace_audit`. It evaluates
+project inputs, then launches the collector through uv with Python 3.14. Make
+orchestrates source builds; mise tasks call Make. Do not install Python packages
 into a global interpreter or change the host's SDK selection for another project.
 
 ## Collect
@@ -16,7 +17,7 @@ into a global interpreter or change the host's SDK selection for another project
    `ref` executable and current restore graphs.
 2. `make audit` collects direct package pins, MSBuild SDK pins and the resolved package
    coordinates from every project's assets graph. `make audit-catalog` only checks versions.
-3. Use `uv run --frozen python -m tooling.reftrace_audit --root . --refresh` for fresh
+3. Use `ref review . --refresh` for fresh
    remote evidence. `--offline` uses cached inputs only and fails on missing inputs.
    `--output` must name a new directory. Never overwrite an earlier report.
 4. Read the reported `report.json`, including failures, source receipts and limitations.
@@ -35,9 +36,10 @@ into a global interpreter or change the host's SDK selection for another project
   feed bytes, not publisher identity or reproducible builds.
 - A nuspec repository commit is a provenance claim. Retrieved files are pinned to it.
   A configured upstream fallback is labelled separately. Missing source stays missing.
-- Metadata reports list names and references. Name diffs do not compare full overload
-  signatures. ILSpy diffs include implementation and formatting; assess them with the
-  original source, then build and run behavior tests after changing the dependency.
+- Metadata reports include declared public/protected signatures and references.
+  Signature diffs distinguish overloads but are not compatibility verdicts. ILSpy
+  probes include implementation and formatting; assess them with original source,
+  then build and run behavior tests after changing the dependency.
 - New versions of transitive dependencies are review findings. Upgrade their owning
   direct dependency first; do not add override references without a concrete reason.
 - Expand `tooling/audit-probes.json` for APIs the application actually calls. Do not

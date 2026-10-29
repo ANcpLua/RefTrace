@@ -6,7 +6,7 @@ using RefTrace.Build;
 
 namespace RefTrace.Cli;
 
-[JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(ReportEnvelope<ErrorReport>))]
 [JsonSerializable(typeof(ReportEnvelope<DependencyGraph>))]
@@ -21,4 +21,6 @@ namespace RefTrace.Cli;
 [JsonSerializable(typeof(ReportEnvelope<AotInspectionReport>))]
 [JsonSerializable(typeof(ReportEnvelope<AotPublishReport>))]
 [JsonSerializable(typeof(ReportEnvelope<PackageReleaseReport>))]
+[JsonSerializable(typeof(ReportEnvelope<ReviewReport>))]
+[JsonSerializable(typeof(ReviewInputs))]
 internal partial class RefTraceJsonContext : JsonSerializerContext;

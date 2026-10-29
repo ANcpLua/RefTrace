@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0-preview.1
+
+* Accept project or directory inputs and resolve custom restore paths with MSBuild.
+* Use `ref why <dependency> [input]`; select the current directory's SDK with `ref sdk`.
+* Ship `ref review` with project/repository inventory, release filtering and saved evidence.
+* Default to compact package summaries; add `--direct`, `--package` and `--assets`.
+* Decode declared API signatures including overloads, generics, parameters and accessors.
+* Adopt JSON schema 2 with specific error codes, input details and candidate choices.
+* Include added/removed assemblies and same-name signature changes in package comparisons.
+
 ## 0.5.0-preview.1
 
 * Target .NET 11 RC3 and use newer System.CommandLine, Pkcs and Spectre.Console previews.

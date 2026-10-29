@@ -29,11 +29,11 @@ public static class RuntimeInspector
     public static async Task<RuntimeReport> CaptureAsync(int processId, TimeSpan duration,
         TimeSpan timeout, CancellationToken cancellationToken = default)
     {
-        if (processId <= 0) throw new InspectionException("--pid must be a positive process ID.");
+        if (processId <= 0) throw new InspectionException("invalid-argument", "--pid must be a positive process ID.");
         if (duration < TimeSpan.FromMilliseconds(100) || duration > TimeSpan.FromSeconds(30))
-            throw new InspectionException("--seconds must be between 0.1 and 30.");
+            throw new InspectionException("invalid-argument", "--seconds must be between 0.1 and 30.");
         if (timeout <= duration || timeout > TimeSpan.FromMinutes(5))
-            throw new InspectionException("--timeout must exceed --seconds and cannot exceed 300 seconds.");
+            throw new InspectionException("invalid-argument", "--timeout must exceed --seconds and cannot exceed 300 seconds.");
 
         using var process = Process.GetProcessById(processId);
         var processName = process.ProcessName;
@@ -93,11 +93,11 @@ public static class RuntimeInspector
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new InspectionException("Runtime observation timed out before a complete stream was collected. Increase --timeout for a large process.");
+            throw new InspectionException("timeout", "Runtime observation timed out before a complete stream was collected. Increase --timeout for a large process.");
         }
         catch (DiagnosticsClientException ex)
         {
-            throw new InspectionException($"Cannot observe process {processId}: {ex.Message} The process must expose a compatible, accessible .NET diagnostic port. Native AOT or disabled diagnostics may not support this observation.");
+            throw new InspectionException("diagnostics-unavailable", $"Cannot observe process {processId}: {ex.Message} The process must expose a compatible, accessible .NET diagnostic port. Native AOT or disabled diagnostics may not support this observation.");
         }
     }
 }
