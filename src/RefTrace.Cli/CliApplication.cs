@@ -244,7 +244,7 @@ public static partial class CliApplication
     private static (Command Command, Argument<string> File, Option<string> Target) GraphCommand(string name, string description, Argument? leading = null)
     {
         var command = new Command(name, description);
-        var file = new Argument<string>("input") { Description = "Project, directory, or restored assets file (default: current directory).", Arity = ArgumentArity.ZeroOrOne, DefaultValueFactory = _ => "." };
+        var file = new Argument<string>("input") { Description = "Project, single-project .slnx solution, directory, or restored assets file (default: current directory).", Arity = ArgumentArity.ZeroOrOne, DefaultValueFactory = _ => "." };
         var target = new Option<string>("--framework", "-f") { Description = "Exact target key or TFM[/RID]. Required when the file has multiple targets." };
         if (leading is not null) command.Arguments.Add(leading);
         command.Arguments.Add(file);

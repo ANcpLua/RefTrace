@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Xml;
+using System.Xml.Linq;
 using RefTrace.Core;
 
 namespace RefTrace.Build;
@@ -15,7 +17,8 @@ public static class ProjectInputs
         var path = Path.GetFullPath(input);
         if (File.Exists(path))
         {
-            if (!IsProject(path)) throw new InspectionException("invalid-argument", "Expected a .csproj, .fsproj, .vbproj or project directory.", path);
+            if (IsSolution(path)) return ReadSolution(path);
+            if (!IsProject(path)) throw new InspectionException("invalid-argument", "Expected a .csproj, .fsproj, .vbproj, .slnx solution or project directory.", path);
             return [path];
         }
         if (!Directory.Exists(path)) throw new InspectionException("path-not-found", "The project input does not exist.", path);
@@ -35,14 +38,15 @@ public static class ProjectInputs
     public static async Task<ProjectInput> ResolveAsync(string input, CancellationToken cancellationToken = default)
     {
         var path = Path.GetFullPath(input);
-        if (!IsProject(path) && !Directory.Exists(path))
+        if (!IsProject(path) && !IsSolution(path) && !Directory.Exists(path))
         {
             if (!File.Exists(path)) throw new InspectionException("file-not-found", "The input file does not exist.", path);
             return new(null, path);
         }
         var projects = FindProjects(path);
-        if (projects.Count == 0) throw new InspectionException("project-not-found", "No .NET project was found in this directory.", path);
-        if (projects.Count != 1) throw new InspectionException("ambiguous-project", "Choose one project, or use ref review to inspect the whole directory.", path, projects);
+        if (projects.Count == 0) throw new InspectionException("project-not-found", IsSolution(path)
+            ? "No .NET project was found in this solution." : "No .NET project was found in this directory.", path);
+        if (projects.Count != 1) throw new InspectionException("ambiguous-project", "Choose one project, or use ref review to inspect all selected projects.", path, projects);
         return await EvaluateAsync(projects[0], cancellationToken).ConfigureAwait(false);
     }
 
@@ -91,6 +95,48 @@ public static class ProjectInputs
         return Path.Combine(entry[prefix.Length..^1], version.Output.Trim());
     }
 
+    private static IReadOnlyList<string> ReadSolution(string path)
+    {
+        XDocument document;
+        try
+        {
+            using var reader = XmlReader.Create(path, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null });
+            document = XDocument.Load(reader, LoadOptions.SetLineInfo);
+        }
+        catch (XmlException error)
+        {
+            throw new InspectionException("invalid-solution", "Malformed XML in the .slnx solution: " + error.Message, path);
+        }
+        if (document.Root?.Name != "Solution")
+            throw new InspectionException("invalid-solution", "Expected a <Solution> root element without an XML namespace in the .slnx file.", path);
+        var directory = Path.GetDirectoryName(path)!;
+        var projects = new HashSet<string>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        var entries = document.Root.Elements("Project")
+            .Concat(document.Root.Elements("Folder").SelectMany(folder => folder.Elements("Project")));
+        foreach (var entry in entries)
+        {
+            var relativePath = (string?)entry.Attribute("Path");
+            var line = ((IXmlLineInfo)entry).LineNumber;
+            if (string.IsNullOrWhiteSpace(relativePath))
+                throw new InspectionException("invalid-solution", $"Project at line {line} must have a non-empty Path attribute.", path);
+            if (!IsProject(relativePath)) continue;
+            string project;
+            try
+            {
+                project = Path.GetFullPath(relativePath.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar), directory);
+            }
+            catch (ArgumentException error)
+            {
+                throw new InspectionException("invalid-solution", $"Project Path '{relativePath}' at line {line} is invalid: {error.Message}", path);
+            }
+            if (!File.Exists(project))
+                throw new InspectionException("file-not-found", $"Solution '{path}' references missing project '{relativePath}'. Restore the file or update its Path in the solution.", project);
+            projects.Add(project);
+        }
+        return projects.Order(StringComparer.Ordinal).ToArray();
+    }
+
+    private static bool IsSolution(string path) => string.Equals(Path.GetExtension(path), ".slnx", StringComparison.OrdinalIgnoreCase);
     private static bool IsProject(string path) => Path.GetExtension(path).ToLowerInvariant() is ".csproj" or ".fsproj" or ".vbproj";
     private static bool SamePath(string first, string second) => string.Equals(first, second,
         OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);

@@ -27,6 +27,7 @@ ref assembly path/to/library.dll --type 'Some.Namespace.Outer+Nested'
 ref sdk path/to/App.csproj
 ref review . --catalog-only
 ref review path/to/App.csproj --refresh --package 'NuGet.*'
+ref review path/to/App.slnx --catalog-only --refresh
 ref processes
 ref runtime --pid 12345 --seconds 1 --timeout 30 --modules
 ref reflection path/to/library.dll --json
@@ -48,12 +49,24 @@ followed by the generic parameter count.
 `net10.0/linux-x64`. If an artifact has more than one matching target, selection is required.
 The `why` command takes the dependency first and shows one deterministic shortest path,
 including the root project. `assets`, `packages`, `why` and `check` accept an optional input:
-project file, directory containing one project, or explicit assets JSON. Omission means
-`.`. Directory discovery excludes build outputs, version-control folders and symlinked
+project file, `.slnx` solution containing one .NET project, directory containing one
+project, or explicit assets JSON. Omission means `.`. Directory discovery excludes
+build outputs, version-control folders and symlinked
 subdirectories. Multiple projects produce `ambiguous-project` with candidate paths;
 `review` intentionally includes all discovered projects. MSBuild's evaluated
 `ProjectAssetsFile` is honored, and its recorded project identity must match the input.
 Missing or mismatched restore evidence requires the caller to restore the project.
+
+Explicit `.slnx` input selects only listed `.csproj`, `.fsproj` and `.vbproj` entries;
+it does not scan the solution's directory. `review` evaluates all selected projects,
+while graph commands require exactly one and report the listed candidate paths
+otherwise. Paths resolve relative to the solution file, including entries in logical
+solution folders. Both slash styles are accepted, repeated normalized paths are
+selected once, and non-.NET projects and solution items are ignored. Malformed XML,
+an invalid root, or a project without a Path returns `invalid-solution`; a missing
+listed .NET project returns `file-not-found` with its resolved path. An empty solution
+or one with no .NET projects returns `project-not-found`. Solutions are never read as
+assets JSON, and XML DTDs are not accepted.
 
 `packages` omits asset arrays by default. `--assets` includes them, `--direct` restricts
 the result to direct dependencies, and `--package` filters IDs by a case-insensitive glob.
@@ -166,7 +179,7 @@ requires a new schema version. Error data has `code` and `message`; diagnostic t
 a stable machine-readable identifier. Optional `input` identifies the input that failed;
 `candidates` contains valid project, framework or SDK choices. Codes include
 `invalid-argument`, `file-not-found`, `path-not-found`, `directory-not-found`,
-`project-not-found`, `ambiguous-project`, `ambiguous-target`, `target-not-found`,
+`project-not-found`, `invalid-solution`, `ambiguous-project`, `ambiguous-target`, `target-not-found`,
 `restore-required`, `mismatched-assets`, `restore-failed`, `evaluation-failed`,
 `sdk-unavailable`, `ambiguous-sdk`, `tool-unavailable`, `output-exists`, `review-failed`,
 `invalid-artifact`, `unsupported-artifact`, `inconclusive-policy`, `diagnostics-unavailable`,
@@ -234,8 +247,8 @@ RefTrace is not a vulnerability scanner; a passed dependency policy is not a sec
 For the prepared GitHub Actions workflow and NuGet account setup, see [Publishing setup](PUBLISHING.md).
 
 ```sh
-dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj -c Release -o artifacts/packages -p:Version=0.8.1-preview.1
-dotnet tool install RefTrace --version 0.8.1-preview.1 --source ./artifacts/packages --tool-path ./artifacts/tools
+dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj -c Release -o artifacts/packages -p:Version=0.9.0-preview.1
+dotnet tool install RefTrace --version 0.9.0-preview.1 --source ./artifacts/packages --tool-path ./artifacts/tools
 ./artifacts/tools/ref --help
 ```
 
@@ -245,7 +258,7 @@ Publishing requires ownership of the NuGet package ID and your NuGet publishing 
 or configured trusted publishing. Local packaging does not reserve the ID.
 
 ```sh
-dotnet nuget push artifacts/packages/RefTrace.0.8.1-preview.1.nupkg --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY"
+dotnet nuget push artifacts/packages/RefTrace.0.9.0-preview.1.nupkg --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY"
 ```
 
 The project has no automatic publish step. `CHANGELOG.md` tracks behavior changes; package

@@ -17,7 +17,7 @@ public static partial class CliApplication
         TextWriter output, TextWriter error)
     {
         var command = new Command("review", "Review restored packages, newer versions, source and API evidence.");
-        var input = new Argument<string>("input") { Arity = ArgumentArity.ZeroOrOne, DefaultValueFactory = _ => ".", Description = "Project or repository directory (default: current directory)." };
+        var input = new Argument<string>("input") { Arity = ArgumentArity.ZeroOrOne, DefaultValueFactory = _ => ".", Description = "Project, .slnx solution, or repository directory (default: current directory)." };
         var folder = new Option<string>("--output") { Description = "New evidence directory; defaults under the input's artifacts/package-audit/." };
         var catalog = new Option<bool>("--catalog-only") { Description = "Compare listed versions without downloading package/source/DLL evidence." };
         var offline = new Option<bool>("--offline") { Description = "Use saved evidence only; fail for missing cache entries." };

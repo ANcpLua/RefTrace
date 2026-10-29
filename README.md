@@ -14,7 +14,7 @@ The first NuGet release is pending. Install the current source with the .NET 11 
 
 ```sh
 dotnet pack src/RefTrace.Cli -c Release -o artifacts/packages
-dotnet tool install --global RefTrace --version 0.8.1-preview.1 --source artifacts/packages
+dotnet tool install --global RefTrace --version 0.9.0-preview.1 --source artifacts/packages
 ref help
 ```
 
@@ -34,7 +34,8 @@ ref why Some.Package MyApp.csproj
 ref check MyApp.csproj --forbid-package 'Unwanted.*'
 ```
 
-Inputs can be a project, a directory containing one project, or a restored assets file.
+Inputs can be a project, a `.slnx` solution containing one .NET project, a directory
+containing one project, or a restored assets file.
 Leave the input out to use the current directory. RefTrace asks MSBuild where that
 project keeps its assets; it does not restore or build it. Ambiguous selections return
 the available choices. Use `--framework net11.0` for a specific restored target.
@@ -49,11 +50,18 @@ use `--forbid-project '*Other.Tests.csproj'`. Quote patterns so your shell passe
 
 ```sh
 ref review . --catalog-only
+ref review MyApp.slnx --catalog-only --refresh
 ref review MyApp.csproj --package 'NuGet.*' --refresh
 ref review MyApp.csproj --offline --json
 ```
 
-`review` accepts one project or a repository containing several. It checks resolved
+`review` accepts one project, a `.slnx` solution, or a repository containing several.
+A solution selects only its listed `.csproj`, `.fsproj`, and `.vbproj` entries, so
+unlisted examples and nested repositories are excluded. Project paths are relative
+to the solution file; solution folders are logical and do not change those paths.
+Repeated paths are reviewed once, and non-.NET entries such as `.esproj` are ignored.
+Malformed solutions and missing listed .NET projects produce actionable errors.
+Directory input still discovers projects recursively. It checks resolved
 versions against listed NuGet releases and saves a report under `artifacts/package-audit/`.
 A full review also collects package bytes, declared API signatures, and configured
 source/implementation probes. It reports candidates without editing dependency pins.

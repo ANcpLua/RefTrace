@@ -97,5 +97,50 @@ public sealed class CliInputTests(TestContext context)
         var help = await Run("review", "--help");
         Assert.Contains("--catalog-only", help.Output);
         Assert.Contains("--probes", help.Output);
+        Assert.Contains(".slnx", help.Output);
+    }
+
+    [TestMethod]
+    public async Task Review_SolutionEvaluatesOnlyListedProjectsBeforeCreatingOutput()
+    {
+        var root = context.TestTempDirectory!;
+        var solution = Path.Combine(root, "Review.slnx");
+        var assets = Path.Combine(root, "missing.assets.json");
+        var output = Path.Combine(root, "review-output");
+        await File.WriteAllTextAsync(Path.Combine(root, "Directory.Build.props"), "<Project/>", context.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(root, "Selected.csproj"),
+            "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net11.0</TargetFramework><ProjectAssetsFile>missing.assets.json</ProjectAssetsFile></PropertyGroup></Project>", context.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(root, "Unlisted.csproj"), "not XML", context.CancellationToken);
+        await File.WriteAllTextAsync(solution, "<Solution><Folder Name=\"/Logical/\"><Project Path=\"Selected.csproj\" /><Project Path=\"missing.esproj\" /></Folder></Solution>", context.CancellationToken);
+
+        var result = await Run("review", solution, "--catalog-only", "--output", output, "--json");
+
+        Assert.AreEqual(2, result.Exit);
+        Assert.AreEqual("", result.Error);
+        using var json = JsonDocument.Parse(result.Output);
+        var data = json.RootElement.GetProperty("data");
+        Assert.AreEqual("restore-required", data.GetProperty("code").GetString());
+        Assert.AreEqual(assets, data.GetProperty("input").GetString());
+        Assert.IsFalse(Directory.Exists(output));
+    }
+
+    [TestMethod]
+    public async Task SolutionErrors_ReportStructuredJsonAndPlainDiagnostics()
+    {
+        var solution = Path.Combine(context.TestTempDirectory!, "Invalid.slnx");
+        await File.WriteAllTextAsync(solution, "<Solution><Project /></Solution>", context.CancellationToken);
+
+        var structured = await Run("packages", solution, "--json");
+        var plain = await Run("review", solution, "--plain");
+
+        Assert.AreEqual(2, structured.Exit);
+        using var json = JsonDocument.Parse(structured.Output);
+        var data = json.RootElement.GetProperty("data");
+        Assert.AreEqual("invalid-solution", data.GetProperty("code").GetString());
+        Assert.AreEqual(solution, data.GetProperty("input").GetString());
+        Assert.AreEqual(2, plain.Exit);
+        Assert.AreEqual("", plain.Output);
+        Assert.Contains("invalid-solution", plain.Error);
+        Assert.Contains("non-empty Path attribute", plain.Error);
     }
 }

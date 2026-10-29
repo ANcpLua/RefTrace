@@ -79,6 +79,135 @@ public sealed class ProjectInputTests(TestContext context)
     }
 
     [TestMethod]
+    public void FindProjects_SolutionSelectsListedDotNetProjectsRelativeToSolution()
+    {
+        var source = Directory.CreateDirectory(Path.Combine(Root, "src"));
+        var first = Path.Combine(source.FullName, "First.csproj");
+        var second = Path.Combine(source.FullName, "Second.fsproj");
+        var third = Path.Combine(source.FullName, "Third.VBPROJ");
+        foreach (var path in new[] { first, second, third, Path.Combine(Root, "Unlisted.csproj") })
+            File.WriteAllText(path, "<Project/>");
+        var solutionDirectory = Directory.CreateDirectory(Path.Combine(Root, "solutions"));
+        var solution = Path.Combine(solutionDirectory.FullName, "Example.SLNX");
+        File.WriteAllText(solution, """
+            <Solution>
+              <Project Path="../src/Second.fsproj" />
+              <Folder Name="/Logical/Not/A/Directory/">
+                <Project Path="..\src\First.csproj" />
+                <Project Path="../src/./First.csproj" />
+                <Project Path="../src/Third.VBPROJ" />
+                <Project Path="../missing.esproj" />
+                <Project Path="../missing.vcxproj" />
+                <File Path="../Unlisted.csproj" />
+              </Folder>
+            </Solution>
+            """);
+
+        var projects = ProjectInputs.FindProjects(solution);
+
+        CollectionAssert.AreEqual(new[] { first, second, third }, projects.ToArray());
+    }
+
+    [TestMethod]
+    [DataRow("<Properties Name=\"Extension\"><Project Path=\"Unlisted.csproj\" /></Properties>")]
+    [DataRow("<Folder Name=\"/Logical/\"><Extension><Project Path=\"Unlisted.csproj\" /></Extension></Folder>")]
+    [DataRow("<Folder Name=\"/Logical/\"><Folder Name=\"/Nested/\"><Project Path=\"Unlisted.csproj\" /></Folder></Folder>")]
+    [DataRow("<Project Path=\"Selected.csproj\"><Project Path=\"Unlisted.csproj\" /></Project>")]
+    [DataRow("<ext:Folder xmlns:ext=\"urn:extension\"><Project Path=\"Unlisted.csproj\" /></ext:Folder>")]
+    public void FindProjects_SolutionIgnoresProjectElementsOutsideSupportedLocations(string extension)
+    {
+        var selected = Path.Combine(Root, "Selected.csproj");
+        File.WriteAllText(selected, "<Project/>");
+        var solution = Path.Combine(Root, "Scoped.slnx");
+        File.WriteAllText(solution, "<Solution><Project Path=\"Selected.csproj\" />" + extension + "</Solution>");
+
+        CollectionAssert.AreEqual(new[] { selected }, ProjectInputs.FindProjects(solution).ToArray());
+    }
+
+    [TestMethod]
+    [DataRow("<Solution><Project></Solution>", "Malformed XML", DisplayName = "Malformed solution XML")]
+    [DataRow("<Project />", "Expected a <Solution> root element", DisplayName = "Wrong solution root")]
+    [DataRow("<Solution xmlns=\"urn:other\" />", "Expected a <Solution> root element", DisplayName = "Unsupported solution namespace")]
+    [DataRow("<Solution><Project /></Solution>", "non-empty Path attribute", DisplayName = "Missing project path")]
+    [DataRow("<Solution><Project Path=\"  \" /></Solution>", "non-empty Path attribute", DisplayName = "Blank project path")]
+    [DataRow("<!DOCTYPE Solution [<!ENTITY path 'Example.csproj'>]><Solution><Project Path=\"&path;\" /></Solution>", "Malformed XML", DisplayName = "Solution DTD is rejected")]
+    public void FindProjects_InvalidSolutionReportsActionableError(string contents, string message)
+    {
+        var solution = Path.Combine(Root, "Invalid.slnx");
+        File.WriteAllText(solution, contents);
+
+        var error = Assert.ThrowsExactly<InspectionException>(() => ProjectInputs.FindProjects(solution));
+
+        Assert.AreEqual("invalid-solution", error.Code);
+        Assert.AreEqual(solution, error.Input);
+        Assert.Contains(message, error.Message);
+    }
+
+    [TestMethod]
+    public void FindProjects_SolutionMissingProjectIdentifiesPathAndSolution()
+    {
+        var solution = Path.Combine(Root, "Missing.slnx");
+        var missing = Path.Combine(Root, "src", "Missing.csproj");
+        File.WriteAllText(solution, "<Solution><Project Path=\"src/Missing.csproj\" /></Solution>");
+
+        var error = Assert.ThrowsExactly<InspectionException>(() => ProjectInputs.FindProjects(solution));
+
+        Assert.AreEqual("file-not-found", error.Code);
+        Assert.AreEqual(missing, error.Input);
+        Assert.Contains(solution, error.Message);
+        Assert.Contains("src/Missing.csproj", error.Message);
+        Assert.Contains("Restore the file or update its Path", error.Message);
+    }
+
+    [TestMethod]
+    public async Task Resolve_SingleProjectSolutionUsesEvaluatedAssetsAndIgnoresUnlistedProjects()
+    {
+        var (project, assets) = Project();
+        await File.WriteAllTextAsync(Path.Combine(Root, "Unlisted.csproj"), "not XML", context.CancellationToken);
+        var solution = Path.Combine(Root, "Example.slnx");
+        await File.WriteAllTextAsync(solution, "<Solution><Folder Name=\"/Logical/\"><Project Path=\"Example.csproj\" /></Folder></Solution>", context.CancellationToken);
+
+        var result = await ProjectInputs.ResolveAsync(solution, context.CancellationToken);
+
+        Assert.AreEqual(project, result.ProjectPath);
+        Assert.AreEqual(assets, result.AssetsPath);
+        Assert.IsFalse(Directory.Exists(Path.Combine(Root, "obj")));
+    }
+
+    [TestMethod]
+    public async Task Resolve_MultipleProjectSolutionReportsOnlyListedCandidatesWithoutEvaluation()
+    {
+        var first = Path.Combine(Root, "First.csproj");
+        var second = Path.Combine(Root, "Second.csproj");
+        foreach (var path in new[] { first, second, Path.Combine(Root, "Unlisted.csproj") })
+            await File.WriteAllTextAsync(path, "not XML", context.CancellationToken);
+        var solution = Path.Combine(Root, "Multiple.slnx");
+        await File.WriteAllTextAsync(solution, "<Solution><Project Path=\"Second.csproj\" /><Project Path=\"First.csproj\" /></Solution>", context.CancellationToken);
+
+        var error = await Assert.ThrowsExactlyAsync<InspectionException>(() => ProjectInputs.ResolveAsync(solution, context.CancellationToken));
+
+        Assert.AreEqual("ambiguous-project", error.Code);
+        Assert.AreEqual(solution, error.Input);
+        CollectionAssert.AreEqual(new[] { first, second }, error.Candidates!.ToArray());
+        Assert.Contains("ref review", error.Message);
+    }
+
+    [TestMethod]
+    [DataRow("<Solution />", DisplayName = "Empty solution")]
+    [DataRow("<Solution><Project Path=\"missing.esproj\" /><File Path=\"Example.csproj\" /></Solution>", DisplayName = "Solution without dotnet projects")]
+    public async Task Resolve_SolutionWithoutDotNetProjectsReportsProjectNotFound(string contents)
+    {
+        var solution = Path.Combine(Root, "Empty.slnx");
+        await File.WriteAllTextAsync(solution, contents, context.CancellationToken);
+
+        var error = await Assert.ThrowsExactlyAsync<InspectionException>(() => ProjectInputs.ResolveAsync(solution, context.CancellationToken));
+
+        Assert.AreEqual("project-not-found", error.Code);
+        Assert.AreEqual(solution, error.Input);
+        Assert.AreEqual("No .NET project was found in this solution.", error.Message);
+    }
+
+    [TestMethod]
     public async Task ResolveSdk_UsesSelectedSdkAndAcceptsExplicitSdkDirectory()
     {
         var result = await ProjectInputs.ResolveSdkAsync(Root, context.CancellationToken);

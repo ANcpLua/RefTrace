@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0-preview.1
+
+* Accept explicit .slnx solutions for package reviews and project input resolution.
+* Review only the listed .NET projects, excluding unrelated prototypes and local examples.
+* Report malformed solutions and missing project paths with actionable diagnostics.
+
 ## 0.8.1-preview.1
 
 * Remove optional MSTest usage telemetry and its Application Insights dependency at restore time.
