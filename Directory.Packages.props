@@ -3,6 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
+    <GlobalPackageReference Include="Meziantou.Analyzer" Version="3.0.317" />
     <PackageVersion Include="NuGet.ProjectModel" Version="7.9.0" />
     <PackageVersion Include="System.CommandLine" Version="3.0.0-rc.3.26522.148" />
     <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="11.0.0-rc.3.26522.148" />

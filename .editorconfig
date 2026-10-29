@@ -1,0 +1,53 @@
+root = true
+
+# Meziantou.Analyzer 3.0.317: selected async/threading rules.
+# Other analyzers keep their existing defaults. See docs/ASYNC-THREADING.md.
+[*.cs]
+dotnet_diagnostic.MA0004.severity = warning
+MA0004.report = DetectContext
+
+# Forward an available token/clock. Missing-token API design stays advisory.
+dotnet_diagnostic.MA0032.severity = suggestion
+dotnet_diagnostic.MA0040.severity = warning
+dotnet_diagnostic.MA0079.severity = warning
+dotnet_diagnostic.MA0166.severity = warning
+# This is the shared option for MA0032 and MA0040 in the installed package.
+MA0032.allow_overloads_with_optional_parameters = true
+MA0032.include_extension_methods_from_not_imported_namespaces = false
+MA0040.include_extension_methods_from_not_imported_namespaces = false
+
+dotnet_diagnostic.MA0042.severity = error
+MA0042.enable_sqlite_special_cases = true
+MA0042.enable_db_special_cases = true
+MA0042.include_extension_methods_from_not_imported_namespaces = false
+MA0042.report_collection_initializers = false
+
+# Scope/lifetime and unobserved-work errors are build failures.
+dotnet_diagnostic.MA0022.severity = error
+dotnet_diagnostic.MA0100.severity = error
+dotnet_diagnostic.MA0129.severity = error
+dotnet_diagnostic.MA0134.severity = warning
+MA0134.report_discarded = true
+dotnet_diagnostic.MA0147.severity = error
+dotnet_diagnostic.MA0155.severity = error
+dotnet_diagnostic.MA0033.severity = error
+dotnet_diagnostic.MA0064.severity = error
+dotnet_diagnostic.MA0158.severity = warning
+
+# Synchronous APIs and naming changes require a separate contract decision.
+dotnet_diagnostic.MA0045.severity = none
+dotnet_diagnostic.MA0080.severity = none
+dotnet_diagnostic.MA0137.severity = none
+dotnet_diagnostic.MA0138.severity = none
+
+[src/**.cs]
+MA0004.report = Always
+
+# The CLI owns its execution context; reusable libraries use ConfigureAwait.
+[src/RefTrace.Cli/**.cs]
+dotnet_diagnostic.MA0004.severity = none
+
+# The test runner owns test continuations. Keep lifetime/cancellation checks on.
+[tests/**.cs]
+dotnet_diagnostic.MA0004.severity = none
+dotnet_diagnostic.MA0032.severity = none

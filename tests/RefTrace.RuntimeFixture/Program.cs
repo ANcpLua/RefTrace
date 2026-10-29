@@ -17,7 +17,7 @@ if (args is ["msbuild", ..])
 
 if (args is ["--wait-child", var pidFile])
 {
-    File.WriteAllText(pidFile + ".tmp", Environment.ProcessId.ToString());
+    await File.WriteAllTextAsync(pidFile + ".tmp", Environment.ProcessId.ToString());
     File.Move(pidFile + ".tmp", pidFile);
     await Task.Delay(Timeout.InfiniteTimeSpan);
     return;
@@ -25,7 +25,7 @@ if (args is ["--wait-child", var pidFile])
 
 if (args is ["publish", var project, ..])
 {
-    File.WriteAllText("parent.pid", Environment.ProcessId.ToString());
+    await File.WriteAllTextAsync("parent.pid", Environment.ProcessId.ToString());
     Console.WriteLine(new string('O', 131072));
     Console.Error.WriteLine(new string('E', 131072));
     Console.WriteLine($"PROJECT {project}");

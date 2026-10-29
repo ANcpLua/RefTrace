@@ -20,9 +20,9 @@ the verified changes. Do not stop at an audit or a list of suggestions.
 1. Read AGENTS.md, global.json, project files, central package versions and existing
    changes. Record the selected SDK, compiler, runtime, TFMs, RIDs, direct packages
    and relevant resolved transitive dependencies. Preserve unrelated work.
-2. Refresh official release metadata and the original article series. Include new
-   installments. Resolve exact versions and source revisions. Prefer the newest
-   released compatible version, including a genuinely newer preview/RC where this
+2. Refresh official release metadata, analyzer packages and the original article
+   series. Include new installments. Resolve exact versions and source revisions.
+   Prefer the newest released compatible version, including a newer preview/RC where this
    repository permits it. Never infer availability from a documentation date,
    framework selector, search snippet, unlisted package or the upstream main branch.
    Distinguish the newest release from what this checkout actually resolves.
@@ -48,6 +48,10 @@ the verified changes. Do not stop at an audit or a list of suggestions.
    direct packages in Directory.Packages.props. Upgrade the owner of a transitive
    dependency before considering an override. Validate a proposed update before
    retaining it. Keep the ref command, readable help, and explicit JSON/plain modes.
+   Refresh the analyzer policy below against the selected package's source. Check
+   actual compiler inputs in every project, then use compile-only negative samples
+   to prove the enabled rules and path exceptions work. Fix findings at their source;
+   do not silence them globally or add speculative annotation exclusions.
 7. In RefTrace use make build, make test and make audit-test. Add focused regressions
    for changed behavior, especially cancellation races, output from both streams,
    disposal on failure and remaining-task ownership. For other repositories use
@@ -60,8 +64,8 @@ the verified changes. Do not stop at an audit or a list of suggestions.
    date, version baseline, source links, decisions and evidence limits. Do not copy
    package source into tracked files. Follow the repository's commit/push workflow;
    do not publish packages unless that release was explicitly requested.
-9. Finish only after every checklist row and discovered in-scope production use has
-   a recorded disposition, every justified replacement and resulting deletion is
+9. Finish only after every API/analyzer checklist row and discovered in-scope
+   production use has a recorded disposition, every justified replacement and resulting deletion is
    implemented, and the relevant checks pass. Report exact unresolved evidence or
    failed checks honestly; do not call them verified. Summarize removed methods,
    classes/files, retained exceptions, selected versions and test results.
@@ -81,10 +85,14 @@ new releases and source changes again; the document does not monitor them itself
 | Installed `.version` revision | `5254d8bcf59917edc1e1abc33bdf2442b77b1c70` | Unified `dotnet/dotnet` source revision, **not** a `dotnet/runtime` commit |
 | Unified source manifest's runtime revision | `474ed963699fc29809015392738a15231aaae2de` | Version-matched runtime source used below |
 | Repository MSTest SDK | `4.5.1` | Existing test toolchain; not newly selected by this guide |
+| Meziantou.Analyzer | `3.0.317`; source `0d0970fc06d68bc46210667b0eb0ee23c441e762` | Latest listed package verified through NuGet registration/catalog; selected analyzer |
 
 Sources: [official release feed][releases], [unified source manifest][manifest].
 Raw source receipts and local verification for this revision are under
 `artifacts/async-reference-20261029/`. Artifacts are intentionally untracked.
+Analyzer package/source receipts and compiler-input checks are under
+`artifacts/analyzer-adoption-20261029/`. The package SHA-512 matched the NuGet
+catalog; this verifies matching bytes, not reproducible source-to-binary provenance.
 The installed reference XML can lag the assembly: compile the exact call before
 declaring a preview API available or absent.
 
@@ -176,6 +184,161 @@ included where stated. Custom sample names are not framework APIs.
 | A42 | `runtime-async=on`, SDK/compiler feature selection | Optional project-level lowering choice; verify build and behavior on the selected runtime. Do not infer measured application benefit. [Runtime guidance][runtime-async] |
 | A43 | `Process.RunAndCaptureTextAsync`, `ProcessTextOutput`, `ProcessExitStatus` | Candidate replacement for handwritten start/read/wait helpers. Verify redirects, cancellation result, process-tree ownership and output draining. [Exact implementation][process-scenarios] |
 | A44 | `Process.ReadAllTextAsync`, `WaitForExitAsync`, `Kill(entireProcessTree: true)` | Keep explicit process ownership if required cleanup differs from convenience APIs; cancellation of a wait alone does not kill a process. [Capture implementation][process-capture] |
+
+## Analyzer policy: verified against Meziantou.Analyzer 3.0.317
+
+RefTrace references the analyzer once through `GlobalPackageReference` in
+`Directory.Packages.props`. NuGet applies it to all nine projects as a private
+development dependency. `MeziantouAnalysisMode=None` in `Directory.Build.props`
+disables that package's default rule set; the root `.editorconfig` explicitly
+enables the reviewed rules below. This setting does not disable the SDK, MSTest
+or other analyzers. [Package][analyzer-package], [package configuration][analyzer-props]
+
+The installed compiler selects the package's `roslyn5.9` analyzer assemblies.
+Resolved `Analyzer` and `EditorConfigFiles` items were checked for all nine projects,
+including both the package's `none.editorconfig` and the repository policy.
+
+### Rule checklist
+
+The package-default column describes the untouched package, not RefTrace's policy.
+In this repository `TreatWarningsAsErrors=true`, so both configured `warning` and
+`error` severities fail a build when a diagnostic applies. `suggestion` remains advisory.
+Defaults were checked against the [packaged default configuration][analyzer-defaults]
+and the rule descriptors at the recorded source revision.
+
+| Rule | Check | Package default | RefTrace policy |
+| --- | --- | --- | --- |
+| MA0004 | Explicit context choice with ConfigureAwait | warning, enabled | warning; Always in libraries, disabled in CLI/tests |
+| MA0022 | Do not return null from Task-returning methods | warning, enabled | error |
+| MA0032 | Token overload when no token is available | suggestion, disabled | suggestion; disabled in tests |
+| MA0033 | No ThreadStatic on instance fields | warning, enabled | error |
+| MA0040 | Forward an available cancellation token | suggestion, enabled | warning |
+| MA0042 | Avoid blocking calls in async code | suggestion, enabled | error |
+| MA0045 | Find async alternatives in synchronous methods | suggestion, disabled | disabled; changing the API contract requires review |
+| MA0064 | No locking on publicly accessible instances | warning, enabled | error |
+| MA0079 | Forward an available token to async enumeration | suggestion, enabled | warning |
+| MA0080 | Enumeration token when no token is available | suggestion, disabled | disabled; signature changes require review |
+| MA0100 | Await before leaving a resource lifetime | warning, enabled | error |
+| MA0129 | Await the task used in a using statement | warning, enabled | error |
+| MA0134 | Observe awaitable calls in synchronous contexts | warning, enabled | warning; report explicit discards too |
+| MA0137 | Async suffix on awaitable methods | warning, disabled | disabled; naming is outside this change |
+| MA0138 | No Async suffix on non-awaitable methods | warning, disabled | disabled; naming is outside this change |
+| MA0147 | No async-void delegate passed as a synchronous delegate | warning, enabled | error |
+| MA0155 | No async-void method/local-function declarations | warning, **disabled** | error |
+| MA0158 | Use System.Threading.Lock where applicable | warning, enabled | warning |
+| MA0166 | Forward an available TimeProvider | suggestion, enabled | warning |
+
+Important corrections to the supplied configuration:
+
+- The shared optional-overload key is **MA0032.allow_overloads_with_optional_parameters**.
+  It controls MA0032 and MA0040. `MA0040.allow_overloads_with_optional_parameters`
+  is not read by this version. Namespace-search options are separate for each rule.
+  [Source][analyzer-cancellation]
+- MA0155 is disabled by default, and its implementation has no automatic event-handler
+  exemption. If a real event requires async void, review that exact boundary and any
+  narrow suppression; do not assume the analyzer recognizes it. [Source][analyzer-void]
+- MA0100 checks resource lifetime, not every direct Task return. Its explicit
+  AsyncFlowControl exception allows a synchronous SuppressFlow scope. [Rule][analyzer-lifetime]
+- MA0134 runs in synchronous contexts. Compiler CS4014 covers unawaited calls in async
+  methods, but an explicit discard in async code can evade both. Assignment alone
+  does not prove eventual observation, cancellation or shutdown ownership. [Rule][analyzer-observe]
+- MA0004 accepts an explicit context choice; it does not prove that false is correct
+  for every UI or application callback. MA0166 also has an
+  `include_extension_methods_from_not_imported_namespaces` option. [Rules][analyzer-rules]
+- Path patterns must include files directly inside a project as well as deeper files.
+  The checked policy uses `src/RefTrace.Cli/**.cs` and `tests/**.cs` for those scopes.
+
+### Reusable configuration
+
+For another CPM repository, add this central reference and set the analysis mode in
+its shared build properties, then use the policy below. Keep the version subject to
+the goal's freshness and compatibility checks. Adapt the CLI/test paths to that
+repository; do not assume every `src` directory contains libraries.
+
+```xml
+<!-- Directory.Packages.props: inside an ItemGroup -->
+<GlobalPackageReference Include="Meziantou.Analyzer" Version="3.0.317" />
+
+<!-- Directory.Build.props: inside a PropertyGroup -->
+<MeziantouAnalysisMode>None</MeziantouAnalysisMode>
+```
+
+The following block is the checked-in `.editorconfig` policy:
+
+<!-- analyzer-policy:start -->
+```ini
+root = true
+
+# Meziantou.Analyzer 3.0.317: selected async/threading rules.
+# Other analyzers keep their existing defaults. See docs/ASYNC-THREADING.md.
+[*.cs]
+dotnet_diagnostic.MA0004.severity = warning
+MA0004.report = DetectContext
+
+# Forward an available token/clock. Missing-token API design stays advisory.
+dotnet_diagnostic.MA0032.severity = suggestion
+dotnet_diagnostic.MA0040.severity = warning
+dotnet_diagnostic.MA0079.severity = warning
+dotnet_diagnostic.MA0166.severity = warning
+# This is the shared option for MA0032 and MA0040 in the installed package.
+MA0032.allow_overloads_with_optional_parameters = true
+MA0032.include_extension_methods_from_not_imported_namespaces = false
+MA0040.include_extension_methods_from_not_imported_namespaces = false
+
+dotnet_diagnostic.MA0042.severity = error
+MA0042.enable_sqlite_special_cases = true
+MA0042.enable_db_special_cases = true
+MA0042.include_extension_methods_from_not_imported_namespaces = false
+MA0042.report_collection_initializers = false
+
+# Scope/lifetime and unobserved-work errors are build failures.
+dotnet_diagnostic.MA0022.severity = error
+dotnet_diagnostic.MA0100.severity = error
+dotnet_diagnostic.MA0129.severity = error
+dotnet_diagnostic.MA0134.severity = warning
+MA0134.report_discarded = true
+dotnet_diagnostic.MA0147.severity = error
+dotnet_diagnostic.MA0155.severity = error
+dotnet_diagnostic.MA0033.severity = error
+dotnet_diagnostic.MA0064.severity = error
+dotnet_diagnostic.MA0158.severity = warning
+
+# Synchronous APIs and naming changes require a separate contract decision.
+dotnet_diagnostic.MA0045.severity = none
+dotnet_diagnostic.MA0080.severity = none
+dotnet_diagnostic.MA0137.severity = none
+dotnet_diagnostic.MA0138.severity = none
+
+[src/**.cs]
+MA0004.report = Always
+
+# The CLI owns its execution context; reusable libraries use ConfigureAwait.
+[src/RefTrace.Cli/**.cs]
+dotnet_diagnostic.MA0004.severity = none
+
+# The test runner owns test continuations. Keep lifetime/cancellation checks on.
+[tests/**.cs]
+dotnet_diagnostic.MA0004.severity = none
+dotnet_diagnostic.MA0032.severity = none
+```
+<!-- analyzer-policy:end -->
+
+### Annotations are explicit exceptions
+
+`Meziantou.Analyzer.Annotations` 1.8.0 was inspected separately but is not needed by
+this change. It provides `ExcludeFromCancellationTokenAnalysis`,
+`ExcludeFromBlockingCallAnalysis` and `NonAsyncDisposableType` as described in the
+supplied reference. Use them only for a documented concrete exception, preferably
+the exact overload. Do not globally exclude DbCommand or unrelated provider APIs
+to make a build pass. NonAsyncDisposableType uses exact-type matching, not a blanket
+exclusion for all derived types.
+
+The package removes attribute **usages** from emitted metadata by default through
+conditional attributes. Defining `MEZIANTOU_ANALYZER_ANNOTATIONS` retains them;
+copied attribute type declarations are not automatically deleted. An omitted
+attribute also cannot configure a downstream consumer through metadata. Inspect
+packaged outputs separately before claiming no shipped dependency.
+[Version-matched annotation guide][analyzer-annotations]
 
 ## Small patterns to retain
 
@@ -335,6 +498,8 @@ production class or file to delete.
 | `make build` | Passed, zero warnings/errors |
 | `make test` | 99 passed, zero failed/skipped |
 | `make audit-test` | 13 passed |
+| Analyzer compiler inputs | `3.0.317` / Roslyn 5.9 assemblies and intended config files resolved in all nine projects |
+| Compile-only negative analyzer samples | All 14 enforced rules produced diagnostics; CLI/test ConfigureAwait exceptions applied |
 | Three C# examples extracted from this document | Compiled; five focused behavior checks passed with default compilation and again with `runtime-async=on` |
 | `Run_CapturesBothLargeStreamsAndPreservesExitStatus` | Success and nonzero-exit rows; 128 KiB per stream, Unicode, working directory and argument with spaces preserved |
 | `Run_CancellationOrDeadline_TerminatesTheProcessTree` | Caller-cancellation and timeout rows both passed with a real controlled child process |
@@ -345,7 +510,20 @@ validated by this run. `ReadAllTextAsync` uses the selected process encoding; un
 the former StreamReader calls, its inspected implementation does not autodetect a
 different encoding from an output BOM. The tested contract is normal .NET CLI text
 output. Recheck encoding requirements before applying this replacement elsewhere.
-The .NET result file is `artifacts/test-results.TQnl5y/RefTrace.Tests_net11.0_arm64.trx`.
+The latest .NET result file is `artifacts/test-results.POtxIL/RefTrace.Tests_net11.0_arm64.trx`.
+The analyzer found two synchronous fixture file writes, now awaited, and missing
+tokens in runtime-test cleanup. Cleanup now has its own three-second cancellation
+source so a canceled test still terminates and joins its child process.
+
+[analyzer-package]: https://www.nuget.org/packages/Meziantou.Analyzer/3.0.317
+[analyzer-props]: https://github.com/meziantou/Meziantou.Analyzer/blob/0d0970fc06d68bc46210667b0eb0ee23c441e762/src/Meziantou.Analyzer.Pack/build/Meziantou.Analyzer.props
+[analyzer-defaults]: https://github.com/meziantou/Meziantou.Analyzer/blob/0d0970fc06d68bc46210667b0eb0ee23c441e762/src/Meziantou.Analyzer.Pack/configuration/default.editorconfig
+[analyzer-rules]: https://github.com/meziantou/Meziantou.Analyzer/tree/0d0970fc06d68bc46210667b0eb0ee23c441e762/docs/Rules
+[analyzer-cancellation]: https://github.com/meziantou/Meziantou.Analyzer/blob/0d0970fc06d68bc46210667b0eb0ee23c441e762/src/Meziantou.Analyzer/Rules/UseAnOverloadThatHasCancellationTokenAnalyzer.cs
+[analyzer-void]: https://github.com/meziantou/Meziantou.Analyzer/blob/0d0970fc06d68bc46210667b0eb0ee23c441e762/src/Meziantou.Analyzer/Rules/DoNotUseAsyncVoidAnalyzer.cs
+[analyzer-lifetime]: https://github.com/meziantou/Meziantou.Analyzer/blob/0d0970fc06d68bc46210667b0eb0ee23c441e762/docs/Rules/MA0100.md
+[analyzer-observe]: https://github.com/meziantou/Meziantou.Analyzer/blob/0d0970fc06d68bc46210667b0eb0ee23c441e762/docs/Rules/MA0134.md
+[analyzer-annotations]: https://github.com/meziantou/Meziantou.Analyzer/blob/b20a548d7a299229b245396ac33e7064c6e8a03b/src/Meziantou.Analyzer.Annotations/README.md
 
 [releases]: https://raw.githubusercontent.com/dotnet/core/main/release-notes/11.0/releases.json
 [manifest]: https://github.com/dotnet/dotnet/blob/5254d8bcf59917edc1e1abc33bdf2442b77b1c70/src/source-manifest.json

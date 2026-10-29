@@ -90,9 +90,18 @@ public sealed class RuntimeInspectorTests(TestContext context)
         {
             if (!process.HasExited)
             {
-                await process.StandardInput.WriteLineAsync();
-                try { await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(3)); }
-                catch (TimeoutException) { process.Kill(entireProcessTree: true); }
+                // Cleanup must still run after the test's own token is canceled.
+                using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                try
+                {
+                    await process.StandardInput.WriteLineAsync(ReadOnlyMemory<char>.Empty, cleanup.Token);
+                    await process.WaitForExitAsync(cleanup.Token);
+                }
+                catch (OperationCanceledException) when (cleanup.IsCancellationRequested)
+                {
+                    process.Kill(entireProcessTree: true);
+                    await process.WaitForExitAsync(CancellationToken.None);
+                }
             }
         }
     }
