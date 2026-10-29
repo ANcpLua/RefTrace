@@ -91,7 +91,7 @@ performance claim or a forced builder/ValueTask/custom-awaiter rewrite.
 ## Complete API and analyzer disposition
 
 Every row A01–A44 has a final disposition below. The accompanying source inventory
-contains 193 relevant production lines and 188 guard lines. Those are audit coverage,
+contains 192 relevant production lines and 188 guard lines. Those are audit coverage,
 not execution coverage. Explicit constants, mutable accumulators, protocol values and
 indirect JSON consumers are accounted for in `api-audit/constant-inventory.md`.
 
@@ -163,7 +163,9 @@ policy and compiler evidence are saved in `analyzers/ledger.json` and
 
 The final local Release build has zero warnings and errors. Native MTP executed
 **122 tests: 122 passed, zero failed or skipped**. The collector's **19 Python tests**
-passed. The following existing and new cases exercise the behavior affected here:
+passed. JetBrains inspection reports zero errors and warnings; its 17 informational
+notes refer to deliberate metadata test fixtures. The following existing and new cases
+exercise the behavior affected here:
 
 | Requirement | Evidence |
 | --- | --- |
