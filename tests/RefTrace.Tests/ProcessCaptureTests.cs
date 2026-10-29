@@ -19,6 +19,7 @@ public sealed class ProcessCaptureTests(TestContext context)
     [TestMethod]
     [DataRow(true)]
     [DataRow(false)]
+    [DoNotParallelize] // Shares the runtime's process-tree termination and reaping machinery.
     [Timeout(25000, CooperativeCancellation = true)]
     public async Task Run_CancellationAndTimeoutRemainDistinctAndTerminateTheChild(bool cancelCaller)
     {

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0-preview.1
+
+* Upgrade five reviewed transitive dependencies through central package pinning.
+* Retain Application Insights 2.23.0 after reproducing the test runner's missing-method failure with 3.2.0.
+* Exercise NuGet JSON writers and Windows credential encryption in compatibility tests.
+* Collect coverage in all three CI environments to exercise the upgraded coverage dependencies.
+* Use C# 15 collection arguments while preserving case-insensitive directory exclusions.
+* Run process-tree cleanup tests separately to avoid the observed RC3 macOS reaping stall.
+
 ## 0.7.0-preview.1
 
 * Review RefTrace with its own installed command and record all 44 async/API decisions.

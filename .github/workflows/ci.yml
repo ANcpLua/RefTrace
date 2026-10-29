@@ -28,7 +28,7 @@ jobs:
       - name: Build
         run: dotnet build RefTrace.slnx --configuration Release "-bl:artifacts/build-{}.binlog"
       - name: Test
-        run: dotnet test --solution RefTrace.slnx --configuration Release --no-build --report-trx --results-directory artifacts/test-results "-bl:artifacts/test-{}.binlog"
+        run: dotnet test --solution RefTrace.slnx --configuration Release --no-build --report-trx --coverage --coverage-output-format cobertura --results-directory artifacts/test-results "-bl:artifacts/test-{}.binlog"
       - name: Pack
         run: dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj --configuration Release --no-build --no-restore --output artifacts/packages "-bl:artifacts/pack-{}.binlog"
       - name: Try the packaged command

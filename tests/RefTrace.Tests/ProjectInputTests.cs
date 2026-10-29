@@ -58,7 +58,7 @@ public sealed class ProjectInputTests(TestContext context)
     {
         var first = Project("A").Project;
         var second = Project("B").Project;
-        foreach (var name in new[] { "artifacts", "obj", "bin", ".git" })
+        foreach (var name in new[] { "ARTIFACTS", "OBJ", "BiN", ".GIT" })
         {
             var folder = Directory.CreateDirectory(Path.Combine(Root, name));
             await File.WriteAllTextAsync(Path.Combine(folder.FullName, "Ignored.csproj"), "<Project/>", context.CancellationToken);

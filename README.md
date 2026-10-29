@@ -14,7 +14,7 @@ The first NuGet release is pending. Install the current source with the .NET 11 
 
 ```sh
 dotnet pack src/RefTrace.Cli -c Release -o artifacts/packages
-dotnet tool install --global RefTrace --version 0.7.0-preview.1 --source artifacts/packages
+dotnet tool install --global RefTrace --version 0.8.0-preview.1 --source artifacts/packages
 ref help
 ```
 
@@ -125,6 +125,8 @@ For report formats and exact limits, see the [technical reference](docs/REFERENC
 For repeatable package, source and DLL comparisons, see [package audits](docs/PACKAGE-AUDIT.md).
 For verified async API choices and a reusable modernization goal, see [async and threading](docs/ASYNC-THREADING.md).
 The latest application of that goal is the [RefTrace self-review](docs/SELF-REVIEW.md).
+The follow-up [transitive compatibility review](docs/TRANSITIVE-REVIEW.md) records
+the five accepted dependency overrides and the incompatible telemetry candidate.
 For the code layout and design decisions, see [architecture](ARCHITECTURE.md).
 Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 

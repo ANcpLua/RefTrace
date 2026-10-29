@@ -1,5 +1,9 @@
 # RefTrace self-review — 2026-10-29
 
+The subsequent [transitive compatibility review](TRANSITIVE-REVIEW.md) supersedes
+the six package retentions and the outstanding collection-expression suggestion
+recorded below. This document preserves the initial 0.7.0 review results.
+
 This run applied the complete [async/API modernization goal](ASYNC-THREADING.md)
 to RefTrace itself, starting from `df9347e38a72478d906500e2decca5625af7ba28`.
 The installed `ref` command performed the initial full review; the updated command

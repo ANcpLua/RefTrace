@@ -2,14 +2,14 @@
 
 RefTrace's own code is licensed under MIT. The tool also distributes the runtime
 components below, which retain their original licenses and copyright notices.
-This inventory is for RefTrace 0.5.0-preview.1 and includes transitive runtime dependencies.
+This inventory is for RefTrace 0.8.0-preview.1 and includes transitive runtime dependencies.
 Build, test and audit tools are not redistributed in the tool package.
 
 | Package | Version | License | Copyright recorded by the package |
 | --- | --- | --- | --- |
 | Microsoft.Diagnostics.NETCore.Client | 0.2.750501 | MIT | © Microsoft Corporation. All rights reserved. |
 | Microsoft.Diagnostics.Tracing.TraceEvent | 4.0.0 | MIT | © Microsoft Corporation. All rights reserved. |
-| Newtonsoft.Json | 13.0.3 | MIT | Copyright © James Newton-King 2008 |
+| Newtonsoft.Json | 14.0.1-beta2 | MIT | Copyright © James Newton-King 2008 |
 | NuGet.Common | 7.9.0 | Apache-2.0 | © Microsoft Corporation. All rights reserved. |
 | NuGet.Configuration | 7.9.0 | Apache-2.0 | © Microsoft Corporation. All rights reserved. |
 | NuGet.DependencyResolver.Core | 7.9.0 | Apache-2.0 | © Microsoft Corporation. All rights reserved. |
@@ -23,7 +23,7 @@ Build, test and audit tools are not redistributed in the tool package.
 | Spectre.Console.Ansi | 0.57.3-alpha.0.29 | MIT | Patrik Svensson, Phil Scott, Nils Andresen, Cédric Luthi |
 | System.CommandLine | 3.0.0-rc.3.26522.148 | MIT | © Microsoft Corporation. All rights reserved. |
 | System.Security.Cryptography.Pkcs | 11.0.0-rc.3.26522.148 | MIT | © Microsoft Corporation. All rights reserved. |
-| System.Security.Cryptography.ProtectedData | 8.0.0 | MIT | © Microsoft Corporation. All rights reserved. |
+| System.Security.Cryptography.ProtectedData | 11.0.0-rc.3.26522.148 | MIT | © Microsoft Corporation. All rights reserved. |
 
 Original license and notice texts are included in [licenses/third-party](licenses/third-party):
 

@@ -73,6 +73,7 @@ public sealed class AotPublishInspectorTests(TestContext context)
     [TestMethod]
     [DataRow(true, "cancelled")]
     [DataRow(false, "timed-out")]
+    [DoNotParallelize] // RC3 macOS process reaping can stall concurrent process-tree termination.
     [Timeout(30000, CooperativeCancellation = true)]
     public async Task Run_CancellationOrDeadline_TerminatesTheProcessTree(bool cancelCaller, string outcome)
     {
@@ -111,6 +112,7 @@ public sealed class AotPublishInspectorTests(TestContext context)
     [TestMethod]
     [DataRow(false, "incomplete-output")]
     [DataRow(true, "cancelled")]
+    [DoNotParallelize] // Cleanup terminates the fixture process tree.
     [Timeout(30000, CooperativeCancellation = true)]
     public async Task Run_OpenInheritedPipeAfterExit_ReportsDrainDeadlineOrCallerCancellation(bool cancelCaller, string outcome)
     {

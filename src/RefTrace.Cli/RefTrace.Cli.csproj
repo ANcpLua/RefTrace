@@ -31,6 +31,7 @@
     <None Include="../../docs/REFERENCE.md" Pack="true" PackagePath="/docs" />
     <None Include="../../docs/ASYNC-THREADING.md" Pack="true" PackagePath="/docs" />
     <None Include="../../docs/SELF-REVIEW.md" Pack="true" PackagePath="/docs" />
+    <None Include="../../docs/TRANSITIVE-REVIEW.md" Pack="true" PackagePath="/docs" />
     <None Include="../../LICENSE" Pack="true" PackagePath="/" />
     <None Include="../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" />
     <None Include="../../licenses/**/*" Pack="true" PackagePath="licenses/" />
