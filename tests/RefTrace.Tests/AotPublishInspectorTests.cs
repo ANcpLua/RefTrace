@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using RefTrace.Build;
 using RefTrace.Core;
 
@@ -42,6 +43,98 @@ public sealed class AotPublishInspectorTests(TestContext context)
         await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => AotPublishInspector.RunAsync(
             "unused.csproj", "osx-arm64", output, TimeSpan.FromSeconds(1), cancellationToken: cancellation.Token));
         Assert.IsFalse(Directory.Exists(output));
+    }
+
+    [TestMethod]
+    [DataRow("success", 0, "succeeded")]
+    [DataRow("failure", 7, "failed")]
+    [Timeout(30000, CooperativeCancellation = true)]
+    public async Task Run_CapturesBothLargeStreamsAndPreservesExitStatus(string name, int exitCode, string outcome)
+    {
+        var project = CreateFixtureProject(name);
+        var report = await AotPublishInspector.RunAsync(project, "osx-arm64",
+            Path.Combine(context.TestTempDirectory!, "reports"), TimeSpan.FromSeconds(20),
+            FixtureExecutable(), context.CancellationToken);
+
+        Assert.AreEqual(exitCode, report.ExitCode);
+        Assert.AreEqual(outcome, report.Outcome);
+        Assert.AreEqual("11.0.100-fixture", report.SdkVersion);
+        Assert.IsTrue(report.Evaluation.Succeeded);
+        Assert.AreEqual("net11.0", report.Evaluation.Properties["TargetFramework"]);
+        var text = await File.ReadAllTextAsync(report.LogPath, context.CancellationToken);
+        Assert.Contains(new string('O', 131072), text);
+        Assert.Contains(new string('E', 131072), text);
+        Assert.Contains($"PROJECT {project}", text);
+        Assert.Contains($"DIRECTORY {Path.GetDirectoryName(project)}", text);
+        Assert.Contains("stdout Grüße 🚀", text);
+        Assert.Contains("stderr Grüße 🚀", text);
+    }
+
+    [TestMethod]
+    [DataRow(true, "cancelled")]
+    [DataRow(false, "timed-out")]
+    [Timeout(30000, CooperativeCancellation = true)]
+    public async Task Run_CancellationOrDeadline_TerminatesTheProcessTree(bool cancelCaller, string outcome)
+    {
+        var project = CreateFixtureProject("wait");
+        var directory = Path.GetDirectoryName(project)!;
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
+        var run = AotPublishInspector.RunAsync(project, "osx-arm64",
+            Path.Combine(context.TestTempDirectory!, "reports"), TimeSpan.FromSeconds(10),
+            FixtureExecutable(), cancellation.Token);
+        try
+        {
+            var childPidFile = Path.Combine(directory, "child.pid");
+            using var readyTimeout = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
+            readyTimeout.CancelAfter(TimeSpan.FromSeconds(8));
+            while (!File.Exists(childPidFile))
+                await Task.Delay(20, readyTimeout.Token);
+            var childId = int.Parse(await File.ReadAllTextAsync(childPidFile, context.CancellationToken));
+            using var child = Process.GetProcessById(childId);
+
+            if (cancelCaller) await cancellation.CancelAsync();
+            var report = await run;
+            await child.WaitForExitAsync(context.CancellationToken).WaitAsync(TimeSpan.FromSeconds(5), context.CancellationToken);
+            Assert.IsTrue(child.HasExited);
+            Assert.AreEqual(outcome, report.Outcome);
+            Assert.IsTrue(File.Exists(report.LogPath));
+        }
+        finally
+        {
+            await cancellation.CancelAsync();
+            KillFixtureIfRunning(Path.Combine(directory, "parent.pid"));
+            KillFixtureIfRunning(Path.Combine(directory, "child.pid"));
+            await run.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken.None);
+        }
+    }
+
+    private string CreateFixtureProject(string name)
+    {
+        var directory = Path.Combine(context.TestTempDirectory!, "project with spaces");
+        Directory.CreateDirectory(directory);
+        var project = Path.Combine(directory, name + ".csproj");
+        File.WriteAllText(project, "<Project />");
+        return project;
+    }
+
+    private static string FixtureExecutable()
+    {
+        var configuration = new DirectoryInfo(AppContext.BaseDirectory).Name;
+        return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..",
+            "RefTrace.RuntimeFixture", configuration,
+            "RefTrace.RuntimeFixture" + (OperatingSystem.IsWindows() ? ".exe" : "")));
+    }
+
+    private static void KillFixtureIfRunning(string pidFile)
+    {
+        if (!File.Exists(pidFile)) return;
+        try
+        {
+            using var process = Process.GetProcessById(int.Parse(File.ReadAllText(pidFile)));
+            if (!process.HasExited) process.Kill(entireProcessTree: true);
+        }
+        catch (ArgumentException) { /* The fixture already exited. */ }
+        catch (InvalidOperationException) { /* The fixture exited during cleanup. */ }
     }
 
     [TestMethod]

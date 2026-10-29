@@ -95,6 +95,7 @@ that the app is safe or AOT-compatible.
 
 For report formats and exact limits, see the [technical reference](docs/REFERENCE.md).
 For repeatable package, source and DLL comparisons, see [package audits](docs/PACKAGE-AUDIT.md).
+For verified async API choices and a reusable modernization goal, see [async and threading](docs/ASYNC-THREADING.md).
 For the code layout and design decisions, see [architecture](ARCHITECTURE.md).
 Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 

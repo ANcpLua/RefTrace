@@ -45,15 +45,13 @@ public static partial class AotPublishInspector
             "--artifacts-path", artifacts, "-o", Path.Combine(output, "native"), "--nologo",
             $"-bl:{binlog};ProjectImports=None" };
         if (!string.IsNullOrWhiteSpace(targetFramework)) arguments.AddRange(["--framework", targetFramework]);
-        var start = new ProcessStartInfo(dotnet)
+        var start = new ProcessStartInfo(dotnet, arguments)
         {
             WorkingDirectory = workingDirectory, RedirectStandardOutput = true,
             RedirectStandardError = true, UseShellExecute = false
         };
-        foreach (var argument in arguments) start.ArgumentList.Add(argument);
         using var process = Process.Start(start) ?? throw new InspectionException("The dotnet process could not be started.");
-        var stdout = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var stderr = process.StandardError.ReadToEndAsync(cancellationToken);
+        var capture = process.ReadAllTextAsync(cancellationToken);
         string outcome;
         try
         {
@@ -70,8 +68,8 @@ public static partial class AotPublishInspector
         string text;
         try
         {
-            text = await stdout.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken.None).ConfigureAwait(false)
-                + Environment.NewLine + await stderr.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken.None).ConfigureAwait(false);
+            var (stdout, stderr) = await capture.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken.None).ConfigureAwait(false);
+            text = stdout + Environment.NewLine + stderr;
         }
         catch (OperationCanceledException) { text = "Output capture was cancelled."; }
         catch (TimeoutException) { text = "Output capture did not complete."; outcome = "incomplete-output"; }
@@ -135,25 +133,25 @@ public static partial class AotPublishInspector
     private static async Task<(int ExitCode, string Output, string Error)> QueryAsync(string dotnet, string directory,
         IReadOnlyList<string> arguments, CancellationToken token)
     {
-        var start = new ProcessStartInfo(dotnet)
+        var start = new ProcessStartInfo(dotnet, arguments)
         {
             WorkingDirectory = directory, RedirectStandardOutput = true,
             RedirectStandardError = true, UseShellExecute = false
         };
-        foreach (var argument in arguments) start.ArgumentList.Add(argument);
         using var process = Process.Start(start) ?? throw new InspectionException("Cannot determine the selected SDK.");
-        var output = process.StandardOutput.ReadToEndAsync(token);
-        var error = process.StandardError.ReadToEndAsync(token);
+        var capture = process.ReadAllTextAsync(token);
         try { await process.WaitForExitAsync(token).ConfigureAwait(false); }
         catch (OperationCanceledException)
         {
             try { if (!process.HasExited) process.Kill(entireProcessTree: true); }
             catch (InvalidOperationException) { }
-            try { await Task.WhenAll(output, error).ConfigureAwait(false); }
+            await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
+            try { await capture.ConfigureAwait(false); }
             catch (OperationCanceledException) { }
             throw;
         }
-        return (process.ExitCode, await output.ConfigureAwait(false), await error.ConfigureAwait(false));
+        var (output, error) = await capture.ConfigureAwait(false);
+        return (process.ExitCode, output, error);
     }
 
     public static IReadOnlyList<PublishDiagnostic> ParseDiagnostics(string text)
