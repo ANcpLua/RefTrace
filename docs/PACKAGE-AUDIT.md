@@ -84,5 +84,3 @@ collect a new review and inspect the packaged application.
 RefTrace owns NuGet comparison and metadata decoding; Python handles network/filesystem
 collection. The command produces evidence. The reusable modernization task in
 [async and threading](ASYNC-THREADING.md) tells an agent how to verify and apply changes.
-The source workflow is also recorded in the local
-[package-evidence skill](../.agents/skills/package-evidence/SKILL.md).

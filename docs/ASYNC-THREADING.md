@@ -17,7 +17,7 @@ and process APIs using docs/ASYNC-THREADING.md as a starting checklist. Verify e
 recommendation against the actual installed or proposed dependency, then implement
 the verified changes. Do not stop at an audit or a list of suggestions.
 
-1. Read AGENTS.md, global.json, project files, central package versions and existing
+1. Read global.json, project files, central package versions and existing
    changes. Record the selected SDK, compiler, runtime, TFMs, RIDs, direct packages
    and relevant resolved transitive dependencies. Preserve unrelated work.
 2. Start with ref review . --catalog-only --refresh to inventory listed package
