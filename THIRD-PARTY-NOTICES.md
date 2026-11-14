@@ -21,9 +21,9 @@ Build, test and audit tools are not redistributed in the tool package.
 | NuGet.Versioning | 7.9.0 | Apache-2.0 | © Microsoft Corporation. All rights reserved. |
 | Spectre.Console | 0.57.3-alpha.0.29 | MIT | Patrik Svensson, Phil Scott, Nils Andresen, Cédric Luthi |
 | Spectre.Console.Ansi | 0.57.3-alpha.0.29 | MIT | Patrik Svensson, Phil Scott, Nils Andresen, Cédric Luthi |
-| System.CommandLine | 3.0.0-rc.3.26522.148 | MIT | © Microsoft Corporation. All rights reserved. |
-| System.Security.Cryptography.Pkcs | 11.0.0-rc.3.26522.148 | MIT | © Microsoft Corporation. All rights reserved. |
-| System.Security.Cryptography.ProtectedData | 11.0.0-rc.3.26522.148 | MIT | © Microsoft Corporation. All rights reserved. |
+| System.CommandLine | 3.0.0 | MIT | © Microsoft Corporation. All rights reserved. |
+| System.Security.Cryptography.Pkcs | 11.0.0 | MIT | © Microsoft Corporation. All rights reserved. |
+| System.Security.Cryptography.ProtectedData | 11.0.0 | MIT | © Microsoft Corporation. All rights reserved. |
 
 Original license and notice texts are included in [licenses/third-party](licenses/third-party):
 
