@@ -8,9 +8,10 @@ merges the generalized 2026-11-02 revision of that reference, which now carries 
 same file name, into the 2026-10-29 guide and rechecks the merged statements against
 the installed RC3 SDK. Unchanged rows date from 2026-10-29; the RefTrace validation
 record keeps its own date and was not rerun.
-As of 2026-11-10, .NET 11 general availability is scheduled for the same day
-([schedule][release-schedule]); this document describes RC3, and every row must be
-rechecked against the GA SDK once a checkout selects it.
+.NET 11.0.0 (SDK 11.0.100) was released on 2026-11-10 ([release notes][release-ga]),
+and this checkout's `global.json` now selects SDK 11.0.100. This document still
+describes RC3: its rows have not been rechecked against the GA SDK, and every row must
+be rechecked before it is relied on for GA.
 This is a decision guide and a repeatable modernization task, not a claim that one
 primitive is fastest for every workload or an inventory of the entire .NET API.
 
@@ -111,6 +112,11 @@ new releases and source changes again; the document does not monitor them itself
 | Meziantou.Analyzer declared by RefTrace | `3.0.317`; source `0d0970fc06d68bc46210667b0eb0ee23c441e762` | `GlobalPackageReference` in `Directory.Packages.props`; latest listed when selected on 2026-10-29 and verified through NuGet registration/catalog |
 | Newer Meziantou.Analyzer named by the 2026-11-02 reference | `3.0.320`; source `2a42a781bc8fb3c507f63c4bcfbf9719619337b2` | Published 2026-11-01; not adopted by RefTrace. NuGet also listed `3.0.321` and `3.0.322` by 2026-11-10; no review covers those |
 | Meziantou.Analyzer.Annotations | `1.8.0` | Separate optional package, still the newest listed on 2026-11-10; not required below |
+
+The baseline above was recorded against RC3. Since 2026-11-10 the official release feed
+lists SDK `11.0.100` and runtime `11.0.0` (release date `2026-11-10`) as the latest
+.NET 11 entry, and the repository `global.json` pins `11.0.100`; the remaining rows
+have not been re-observed on that SDK.
 
 Sources: [official release feed][releases], [unified source manifest][manifest],
 [RC3 tag][runtime-tag], [newer analyzer package][analyzer-package-320].
@@ -695,7 +701,7 @@ checks were not rerun.
 [stream]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Private.CoreLib/src/System/IO/Stream.cs
 [process-unix]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Unix.cs#L111-L194
 
-[release-schedule]: https://github.com/dotnet/core/blob/5f99c19c62154814a35716e0726c82be29c690de/releases.md
+[release-ga]: https://github.com/dotnet/core/blob/main/release-notes/11.0/11.0.0/11.0.0.md
 [runtime-tag]: https://api.github.com/repos/dotnet/runtime/git/ref/tags/v11.0.0-rc.3.26522.148
 [article-rc3-benchmarks]: https://www.meziantou.net/runtime-async-benchmarks-dotnet-10-vs-dotnet-11.htm
 [process-unix-release]: https://github.com/dotnet/runtime/blob/5a720bffcf31577eff28c81adb6f7b7788172ece/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Unix.cs#L111-L156
