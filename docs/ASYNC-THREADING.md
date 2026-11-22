@@ -172,7 +172,8 @@ cancellation or deadline, which is exactly the API the backport fixes. On RC3 th
 therefore kill root first on every Unix target, and on macOS a canceled or timed-out
 capture can hang the calling process (`ref` or a test host) or trigger the
 process-group signals above. On the 11.0.0 source they kill descendants first and
-use the fixed reaping loop; the tree-kill tests have not been rerun on that SDK.
+use the fixed reaping loop; the tree-kill tests pass on SDK 11.0.100 in CI on macOS,
+Linux and Windows ([CI run][ci-ga]).
 RefTrace does not choose either behavior. Its 2026-10-29 tree-kill tests passed on
 macOS, which shows the hang is not deterministic, not that it cannot happen. Check a
 hang after macOS cancellation or timeout against this defect first, and recheck both
@@ -712,6 +713,7 @@ checks were not rerun.
 
 [manifest-ga]: https://github.com/dotnet/dotnet/blob/297acf930fb0f5c07fd4e51d78e521b4ad2e5d1f/src/source-manifest.json
 [process-unix-ga]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Unix.cs
+[ci-ga]: https://github.com/ANcpLua/RefTrace/actions/runs/45026494105
 [release-ga]: https://github.com/dotnet/core/blob/main/release-notes/11.0/11.0.0/11.0.0.md
 [runtime-tag]: https://api.github.com/repos/dotnet/runtime/git/ref/tags/v11.0.0-rc.3.26522.148
 [article-rc3-benchmarks]: https://www.meziantou.net/runtime-async-benchmarks-dotnet-10-vs-dotnet-11.htm
