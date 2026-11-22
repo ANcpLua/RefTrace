@@ -66,7 +66,8 @@ portable-PDB execution evidence. Matching interfaces and COM GUIDs are evidence
 about that boundary, not proof of every native reader implementation. The added
 `CoCreateInstance` fallback requires `UseComRegistry`; CodeCoverage passes options
 zero and does not request that changed branch. These decisions
-apply to RefTrace's pinned .NET 11 RC3/MSTest/NuGet graph.
+were made against RefTrace's .NET 11 RC3/MSTest/NuGet graph; they have not been
+rechecked since the pins moved to SDK 11.0.100 and the 11.0.0/3.0.0 packages.
 
 ## Sources
 

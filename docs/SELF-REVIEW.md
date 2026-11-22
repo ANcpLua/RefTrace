@@ -3,10 +3,10 @@
 The subsequent [transitive compatibility review](TRANSITIVE-REVIEW.md) supersedes
 the six package retentions and the outstanding collection-expression suggestion
 recorded below. This document preserves the initial 0.7.0 review results.
-The current `global.json` pins SDK `11.0.100`, and System.CommandLine,
-Microsoft.DiaSymReader (`3.0.0`), System.Security.Cryptography.Pkcs,
+The current `global.json` pins SDK `11.0.100`, and `Directory.Packages.props` pins
+System.CommandLine and Microsoft.DiaSymReader `3.0.0` and System.Security.Cryptography.Pkcs,
 System.Security.Cryptography.ProtectedData and Microsoft.Extensions.DependencyModel
-(`11.0.0`) are on their stable releases; the rc.3 versions below are the ones reviewed then.
+`11.0.0`; the rc.3 versions below are the ones reviewed then.
 
 This run applied the complete [async/API modernization goal](ASYNC-THREADING.md)
 to RefTrace itself, starting from `df9347e38a72478d906500e2decca5625af7ba28`.
