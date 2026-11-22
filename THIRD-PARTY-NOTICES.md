@@ -37,7 +37,7 @@ Original license and notice texts are included in [licenses/third-party](license
 - `spectre`: Spectre.Console and Spectre.Console.Ansi; from their
   [source revision](https://github.com/spectreconsole/spectre.console/tree/0de1831405299575419a9cb17d5e7349a3ae61f5).
 - `commandline`: System.CommandLine; from its
-  [source revision](https://github.com/dotnet/dotnet/tree/5254d8bcf59917edc1e1abc33bdf2442b77b1c70).
+  [source revision](https://github.com/dotnet/dotnet/tree/297acf930fb0f5c07fd4e51d78e521b4ad2e5d1f).
 - Directories named after Newtonsoft.Json and System.Security.Cryptography.* preserve
   their package license and notice texts. Pkcs uses the same .NET Foundation MIT
   license text distributed with System.Security.Cryptography.ProtectedData.
