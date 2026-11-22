@@ -70,8 +70,7 @@ public static class AssemblyInspector
         var type = reader.GetExportedType(handle);
         if (type.Implementation.Kind == HandleKind.ExportedType)
             return ForwardedName(reader, (ExportedTypeHandle)type.Implementation) + "+" + reader.GetString(type.Name);
-        var ns = reader.GetString(type.Namespace);
-        return string.IsNullOrEmpty(ns) ? reader.GetString(type.Name) : ns + "." + reader.GetString(type.Name);
+        return PeMetadata.Qualified(reader.GetString(type.Namespace), reader.GetString(type.Name));
     }
 
     private static string? Text(MetadataReader reader, StringHandle handle)

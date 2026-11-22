@@ -192,7 +192,7 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
     public string GetTypeFromDefinition(MetadataReader metadata, TypeDefinitionHandle handle, byte rawTypeKind)
     {
         var type = metadata.GetTypeDefinition(handle);
-        return type.GetDeclaringType().IsNil ? Qualified(metadata.GetString(type.Namespace), metadata.GetString(type.Name))
+        return type.GetDeclaringType().IsNil ? PeMetadata.Qualified(metadata.GetString(type.Namespace), metadata.GetString(type.Name))
             : GetTypeFromDefinition(metadata, type.GetDeclaringType(), 0) + "+" + metadata.GetString(type.Name);
     }
     public string GetTypeFromReference(MetadataReader metadata, TypeReferenceHandle handle, byte rawTypeKind)
@@ -200,9 +200,8 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
         var type = metadata.GetTypeReference(handle);
         return type.ResolutionScope.Kind == HandleKind.TypeReference
             ? GetTypeFromReference(metadata, (TypeReferenceHandle)type.ResolutionScope, 0) + "+" + metadata.GetString(type.Name)
-            : Qualified(metadata.GetString(type.Namespace), metadata.GetString(type.Name));
+            : PeMetadata.Qualified(metadata.GetString(type.Namespace), metadata.GetString(type.Name));
     }
-    private static string Qualified(string ns, string name) => ns.Length == 0 ? name : ns + "." + name;
     public string GetTypeFromSpecification(MetadataReader metadata, Context context, TypeSpecificationHandle handle, byte rawTypeKind)
         => metadata.GetTypeSpecification(handle).DecodeSignature(this, context);
     public string GetArrayType(string elementType, ArrayShape shape)
