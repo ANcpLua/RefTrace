@@ -1,4 +1,5 @@
 using RefTrace.Core;
+using RefTrace.Metadata;
 
 namespace RefTrace.Tests;
 
@@ -70,12 +71,20 @@ public sealed class LanguageMetadataTests
     }
 
     [TestMethod]
-    public void RuntimeAsync_KeepsTheDeclaredSignature()
+    public void RuntimeAsync_KeepsTheDeclaredSignatureAndReflectionNamesTheDeclaredMethod()
     {
         var lookups = Type(Read(), "Lookups");
         var runtimeAsync = lookups.Members.Single(m => m.Name == "RuntimeAsync");
         var stateMachine = lookups.Members.Single(m => m.Name == "StateMachine");
         Assert.AreEqual(runtimeAsync.Signature.Replace("RuntimeAsync(", "StateMachine(", StringComparison.Ordinal), stateMachine.Signature);
+
+        var findings = ReflectionInspector.Read(FixturePath()).Findings;
+        var direct = findings.Single(f => f.Caller == Namespace + "Lookups.RuntimeAsync");
+        Assert.IsNull(direct.DeclaredMethod);
+        var lowered = findings.Single(f => f.DeclaredMethod == Namespace + "Lookups.StateMachine");
+        Assert.StartsWith(Namespace + "Lookups+<StateMachine>", lowered.Caller);
+        Assert.EndsWith(".MoveNext", lowered.Caller);
+        Assert.AreEqual("GetType", lowered.TargetMember);
     }
 
     [TestMethod]

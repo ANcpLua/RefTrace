@@ -723,7 +723,10 @@ The counts come from a metadata scan of the built assemblies outside RefTrace: m
 implementation flags, `AsyncStateMachineAttribute` and `IAsyncStateMachine` implementations.
 The packaged tool built with the feature passed CI's smoke steps locally. Linux, macOS and
 Windows are covered by the CI run of the pull request that introduced the setting. No
-performance claim follows: nothing here measured time or allocations.
+performance claim follows: nothing here measured time or allocations. For a reflection call
+in an async method, `ref reflection` now reports the method itself as `caller`; a
+state-machine build reports the generated `MoveNext` there and the method as
+`declaredMethod` (see the [reference](REFERENCE.md)).
 
 [analyzer-package]: https://www.nuget.org/packages/Meziantou.Analyzer/3.0.317
 [analyzer-props]: https://github.com/meziantou/Meziantou.Analyzer/blob/0d0970fc06d68bc46210667b0eb0ee23c441e762/src/Meziantou.Analyzer.Pack/build/Meziantou.Analyzer.props

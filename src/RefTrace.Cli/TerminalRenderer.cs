@@ -270,7 +270,7 @@ internal static class TerminalRenderer
         Evidence(console, report.SourcePath, $"Static IL · {report.MethodBodiesScanned} method bodies · {report.Findings.Count} review points");
         var findings = Table("Caller / IL", "Target", "Category");
         foreach (var finding in report.Findings.Take(40))
-            findings.AddRow(Text($"{finding.Caller}\nIL_{finding.IlOffset:x4}"),
+            findings.AddRow(Text($"{finding.Caller}\nIL_{finding.IlOffset:x4}" + (finding.DeclaredMethod is null ? "" : $"\ndeclared method {finding.DeclaredMethod}")),
                 Text($"{finding.TargetType}.{finding.TargetMember}"), Text(finding.Category));
         if (report.Findings.Count != 0) console.Write(findings);
         if (report.Findings.Count > 40) Note(console, "Showing the first 40 findings; use --json for all findings.");

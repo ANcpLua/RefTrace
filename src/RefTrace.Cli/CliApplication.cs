@@ -125,7 +125,8 @@ public static partial class CliApplication
             var report = ReflectionInspector.Read(parse.GetValue(reflectionFile)!);
             return (report, parse.GetValue(failOnFindings) && report.Findings.Count != 0 ? 1 : 0,
                 $"Static method references: {report.Findings.Count}; method bodies scanned: {report.MethodBodiesScanned}.{Environment.NewLine}" +
-                string.Join(Environment.NewLine, report.Findings.Select(f => $"{f.Caller} IL_{f.IlOffset:x4} -> {f.TargetType}.{f.TargetMember} ({f.Category})")));
+                string.Join(Environment.NewLine, report.Findings.Select(f => $"{f.Caller} IL_{f.IlOffset:x4} -> {f.TargetType}.{f.TargetMember} ({f.Category})"
+                    + (f.DeclaredMethod is null ? "" : $"; declared method {f.DeclaredMethod}"))));
         }, output, error, parse.GetValue(plain)));
         root.Subcommands.Add(reflection);
 

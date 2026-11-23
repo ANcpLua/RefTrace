@@ -78,6 +78,13 @@ See [package reviews](PACKAGE-AUDIT.md) for `review` and its saved evidence cont
 reflection, dynamic loading and dynamic-code method references with caller tokens and IL
 offsets. Operands are not mistaken for opcodes. It does not prove execution or reachability.
 `--fail-on-findings` makes these references an explicit exit-1 policy.
+`caller`, `callerToken` and `ilOffset` locate the IL that contains the call. When that IL
+is the generated `MoveNext` of an async or iterator state machine, `declaredMethod` names
+the method the source declared, found through its `AsyncStateMachineAttribute`,
+`IteratorStateMachineAttribute` or `AsyncIteratorStateMachineAttribute`. A runtime-async
+method (C# 15, `runtime-async=on`) has no state machine: its calls have the method itself as
+`caller` and no `declaredMethod`. Lambdas and local functions are reported under their
+compiler-generated names only.
 
 `aot inspect` reads compatibility declarations, annotations and static reflection evidence.
 Its assessment remains `not-established`, even when compatibility is declared or no known
