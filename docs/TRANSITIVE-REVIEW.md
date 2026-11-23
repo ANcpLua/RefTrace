@@ -93,7 +93,7 @@ recorded here so that this section does not depend on it.
 | Microsoft.Extensions.DependencyModel; CodeCoverage 18.12.0 (`[10.0.10, )`) | 10.0.10 → 11.0.0 | None added or removed; RC3 → 11.0.0 none | Same coverage run | **Keep 11.0.0** |
 | Microsoft.TestPlatform.ObjectModel; MSTest.TestAdapter 4.5.2 (`[18.10.1, )`) | 18.10.1 → 18.11.0 | None added or removed | The adapter discovers and runs all 156 tests | **Keep 18.11.0** |
 | Newtonsoft.Json; NuGet.Packaging 8.0.0 (`[13.0.3, )`) | 13.0.3 → 14.0.1-beta2 | Nine added, none removed (unchanged package) | `DependencyCompatibilityTests` lock-file and runtime-graph round trips through NuGet 8.0.0's writers, including the new analyzer-asset writer | **Keep 14.0.1-beta2** |
-| System.Security.Cryptography.ProtectedData; NuGet.Configuration 8.0.0 (`[8.0.0, )`) | 8.0.0 → 11.0.0 | Six added span overloads, none removed; RC3 → 11.0.0 none | `NuGetEncryption_RoundTripsOnWindowsAndRejectsUnsupportedPlatforms`: platform rejection on macOS here; the DPAPI round trip runs only in the Windows CI job | **Keep 11.0.0** |
+| System.Security.Cryptography.ProtectedData; NuGet.Configuration 8.0.0 (`[8.0.0, )`) | 8.0.0 → 11.0.0 | Six added span overloads, none removed; RC3 → 11.0.0 none | `NuGetEncryption_RoundTripsOnWindowsAndRejectsUnsupportedPlatforms`: platform rejection on macOS here; the DPAPI round trip passed in the Windows job of [CI run 45163580603](https://github.com/ANcpLua/RefTrace/actions/runs/45163580603) | **Keep 11.0.0** |
 
 What changed since 2026-10-30:
 
@@ -114,7 +114,8 @@ What changed since 2026-10-30:
 Not rechecked: the isolated coverage comparison with its portable-PDB fixture, the
 adapter's 31 registered properties and the Application Insights probe. Their harnesses
 lived in the deleted `artifacts/transitive-review-20261029/`. The full-suite coverage run
-and CI's coverage on Linux, macOS and Windows are the consumer evidence for this recheck.
+and CI's coverage on Linux, macOS and Windows ([run 45163580603](https://github.com/ANcpLua/RefTrace/actions/runs/45163580603)) are the
+consumer evidence for this recheck.
 
 ## Sources
 
@@ -162,8 +163,9 @@ for the runtime's process implementation or a claim that its underlying issue is
 > 2026-11-23: .NET 11.0.0 carries the macOS fix (see the [async guide](ASYNC-THREADING.md)).
 > `Run_CancellationOrDeadline_TerminatesTheProcessTree` runs in parallel again on SDK
 > 11.0.100: 30 consecutive runs of `AotPublishInspectorTests` (14 tests, 15–16 s each) and
-> 10 full-suite runs (156 tests, 25–26 s each) passed on macOS ARM64 without a stall. The
-> other two methods keep `[DoNotParallelize]` for their own stated reasons.
+> 10 full-suite runs (156 tests, 25–26 s each) passed on macOS ARM64 without a stall, and
+> [CI run 45163580603](https://github.com/ANcpLua/RefTrace/actions/runs/45163580603) passed the suite on Ubuntu, macOS and Windows.
+> The other two methods keep `[DoNotParallelize]` for their own stated reasons.
 
 ## Local validation
 

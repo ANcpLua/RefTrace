@@ -196,7 +196,8 @@ process-group signals above. On the 11.0.0 source they kill descendants first an
 use the fixed reaping loop; the tree-kill tests pass on SDK 11.0.100 in CI on macOS,
 Linux and Windows ([CI run][ci-ga]).
 Since 2026-11-23 the AOT publish tree-kill test runs in parallel with the rest of the
-suite again; the RC3 workaround is gone (see the
+suite again and passed that way on all three systems in [CI run 45163580603][ci-runtime-async];
+the RC3 workaround is gone (see the
 [transitive review](TRANSITIVE-REVIEW.md#regression-checks-and-style)).
 RefTrace does not choose either behavior. Its 2026-10-29 tree-kill tests passed on
 macOS, which shows the hang is not deterministic, not that it cannot happen. Check a
@@ -722,8 +723,10 @@ build forced into a separate artifacts directory:
 
 The counts come from a metadata scan of the built assemblies outside RefTrace: method
 implementation flags, `AsyncStateMachineAttribute` and `IAsyncStateMachine` implementations.
-The packaged tool built with the feature passed CI's smoke steps locally. Linux, macOS and
-Windows are covered by the CI run of the pull request that introduced the setting. No
+The packaged tool built with the feature passed CI's smoke steps locally. In [CI run
+45163580603][ci-runtime-async] of pull request #4, which introduced the setting, the build,
+all 164 tests with coverage, the 19 audit-tool tests, pack and the packaged-command smoke
+steps passed on Ubuntu, macOS and Windows. No
 performance claim follows: nothing here measured time or allocations. For a reflection call
 in an async method, `ref reflection` now reports the method itself as `caller`; a
 state-machine build reports the generated `MoveNext` there and the method as
@@ -777,6 +780,7 @@ state-machine build reports the generated `MoveNext` there and the method as
 [manifest-ga]: https://github.com/dotnet/dotnet/blob/297acf930fb0f5c07fd4e51d78e521b4ad2e5d1f/src/source-manifest.json
 [process-unix-ga]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Unix.cs
 [ci-ga]: https://github.com/ANcpLua/RefTrace/actions/runs/45026494105
+[ci-runtime-async]: https://github.com/ANcpLua/RefTrace/actions/runs/45163580603
 [release-ga]: https://github.com/dotnet/core/blob/main/release-notes/11.0/11.0.0/11.0.0.md
 [runtime-tag]: https://api.github.com/repos/dotnet/runtime/git/ref/tags/v11.0.0-rc.3.26522.148
 [runtime-tag-ga]: https://api.github.com/repos/dotnet/runtime/git/ref/tags/v11.0.0
