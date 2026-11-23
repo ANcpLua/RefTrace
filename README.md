@@ -10,17 +10,17 @@ error codes and a meaningful exit code. In a terminal, people get tables and tre
 ## Install
 
 ```sh
-dotnet tool install --global RefTrace --prerelease
+dotnet tool install --global RefTrace
 ref help
 ```
 
-The package is **RefTrace**; the command is **ref**. It needs the .NET 11 runtime. Every version so far is a
-preview, hence `--prerelease`; `dotnet tool update --global RefTrace --prerelease` moves to a newer one. To pin the
-version per repository, install it into a tool manifest and call `dotnet tool run ref`:
+The package is **RefTrace**; the command is **ref**. It needs the .NET 11 runtime.
+`dotnet tool update --global RefTrace` moves to a newer version. To pin the version per repository, install it into
+a tool manifest and call `dotnet tool run ref`:
 
 ```sh
 dotnet new tool-manifest
-dotnet tool install RefTrace --prerelease
+dotnet tool install RefTrace
 ```
 
 `ref help` gives the overview. `ref help assembly` or `ref assembly --help` shows one command's arguments and options.

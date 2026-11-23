@@ -25,7 +25,7 @@ belongs only to the CLI. The terminal renderer never decides whether a finding i
 
 Callers reference the owning modules directly. The shared `RefTrace.Core` namespace
 contains the report and inspection API; there is no forwarding assembly.
-CLI JSON schema 2 and the dependency-first `why` syntax are the current preview contracts.
+CLI JSON schema 2 and the dependency-first `why` syntax are the current contracts of the 0.x versions.
 
 `ReleaseCatalog` uses NuGet's version comparer. The C# 15 `ReleaseDecision` union keeps
 the two outcomes explicit, with exhaustive switch expressions and default-value rejection.

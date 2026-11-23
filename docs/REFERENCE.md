@@ -245,7 +245,7 @@ a stable machine-readable identifier. Optional `input` identifies the input that
 
 Schema 2 removes the old compact member-name records, omits unrequested package asset
 arrays, and replaces the generic `invalid-input` code with specific errors. JSON is
-written on one line. The 0.x previews make no schema-1 compatibility
+written on one line. The 0.x versions make no schema-1 compatibility
 promise. A review with per-package failures still returns its `review` report and exit 1;
 its detailed saved `report.json` has its own schema version 2.
 
@@ -306,7 +306,7 @@ RefTrace is not a vulnerability scanner; a passed dependency policy is not a sec
 
 ```sh
 dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj -c Release -o artifacts/packages
-dotnet tool install RefTrace --version 0.10.0-preview.1 --source ./artifacts/packages --tool-path ./artifacts/tools
+dotnet tool install RefTrace --version 0.10.0 --source ./artifacts/packages --tool-path ./artifacts/tools
 ./artifacts/tools/ref --help
 ```
 

@@ -1,7 +1,10 @@
 # Changelog
 
-## 0.10.0-preview.1
+## 0.10.0
 
+* The version carries no preview suffix any more. The suffix dated from the time on .NET 11 release candidates;
+  RefTrace now builds and runs on the released .NET 11 SDK. `dotnet tool install --global RefTrace` finds it
+  without `--prerelease`.
 * Target NuGet 8.0: NuGet.ProjectModel 8.0.0 replaces 7.9.0, and all nine NuGet packages resolve to 8.0.0.
 * List the analyzer assets that restore records with `RestoreEnableAnalyzerAssets` in `packages --assets` and
   graph JSON, and say when a restore did not record them.
