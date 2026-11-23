@@ -23,7 +23,7 @@ public static class AssemblyInspector
         if (!reader.IsAssembly) throw new InspectionException("unsupported-artifact", "The file is a module, not an assembly manifest.");
         var definition = reader.GetAssemblyDefinition();
         var names = new MetadataNames(reader);
-        var attributes = new Dictionary<string, string?>(StringComparer.Ordinal);
+        Dictionary<string, string?> attributes = [with(StringComparer.Ordinal)];
         var isReferenceAssembly = false;
         foreach (var handle in definition.GetCustomAttributes())
         {
@@ -60,6 +60,7 @@ public static class AssemblyInspector
             ForwardedTypes = reader.ExportedTypes.Where(h => reader.GetExportedType(h).IsForwarder)
                 .Select(h => ForwardedName(reader, h)).Order(StringComparer.Ordinal).ToArray(),
             AssemblyMetadata = PeMetadata.AssemblyProperties(reader),
+            MemorySafetyRulesVersion = PeMetadata.MemorySafetyRulesVersion(reader),
             DebugDirectoryKinds = pe.ReadDebugDirectory().Select(entry => entry.Type.ToString())
                 .Distinct().Order(StringComparer.Ordinal).ToArray()
         };

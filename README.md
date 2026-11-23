@@ -6,15 +6,15 @@ RefTrace helps you follow a package back to its source, look inside a DLL, and c
 a running app. It shows what it found and tells you when there is not enough information
 to draw a conclusion.
 
-Private preview development on .NET 11 RC3.
+Private preview development on .NET 11.
 
 ## Install
 
-The first NuGet release is pending. Install the current source with the .NET 11 RC3 SDK:
+The first NuGet release is pending. Install the current source with the .NET 11 SDK (11.0.100, pinned in `global.json`):
 
 ```sh
 dotnet pack src/RefTrace.Cli -c Release -o artifacts/packages
-dotnet tool install --global RefTrace --version 0.9.0-preview.1 --source artifacts/packages
+dotnet tool install --global RefTrace --version 0.10.0-preview.1 --source artifacts/packages
 ref help
 ```
 
@@ -41,7 +41,8 @@ project keeps its assets; it does not restore or build it. Ambiguous selections 
 the available choices. Use `--framework net11.0` for a specific restored target.
 
 Package output shows IDs, versions, and direct/transitive origin. Use `--package
-'NuGet.*'` to filter it and `--assets` to include compile/runtime paths.
+'NuGet.*'` to filter it and `--assets` to include compile, analyzer and runtime paths.
+Analyzer paths appear when the project sets `RestoreEnableAnalyzerAssets` (NuGet 8.0, SDK 11.0.100).
 
 Use `assets` for the full graph, including project references. To check a project boundary,
 use `--forbid-project '*Other.Tests.csproj'`. Quote patterns so your shell passes them through.

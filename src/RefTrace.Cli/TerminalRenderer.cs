@@ -44,10 +44,13 @@ internal static class TerminalRenderer
                 {
                     var assets = new Tree(Text(package.Id));
                     foreach (var asset in package.CompileAssets!) assets.AddNode(Text("compile: " + asset));
+                    foreach (var asset in package.AnalyzerAssets ?? []) assets.AddNode(Text("analyzer: " + asset));
                     foreach (var asset in package.RuntimeAssets ?? []) assets.AddNode(Text("runtime: " + asset));
                     console.Write(assets);
                 }
                 console.MarkupLine($"[dim]{packages.Packages.Count} resolved packages · exact selected target[/]");
+                if (packages.Packages.Any(p => p.CompileAssets is not null) && !packages.AnalyzerAssetsRecorded)
+                    Note(console, CliApplication.AnalyzerAssetsNotRecorded);
                 if (packages.UnresolvedDependencies.Count != 0)
                     Note(console, "Unresolved constraints: " + string.Join(", ", packages.UnresolvedDependencies));
                 break;
@@ -79,6 +82,7 @@ internal static class TerminalRenderer
                 identity.AddRow("Informational version", Markup.Escape(assembly.InformationalVersion ?? "not recorded"));
                 identity.AddRow("MVID", assembly.ModuleVersionId);
                 identity.AddRow("Reference assembly", assembly.IsReferenceAssembly ? "yes" : "no");
+                identity.AddRow("Memory-safety rules", assembly.MemorySafetyRulesVersion?.ToString(CultureInfo.InvariantCulture) ?? "not recorded");
                 console.Write(identity);
                 if (assembly.AssemblyMetadata.Count != 0)
                 {
@@ -93,9 +97,11 @@ internal static class TerminalRenderer
                 console.Write(references);
                 foreach (var type in assembly.Types)
                 {
-                    var tree = new Tree(Text(type.Name));
+                    var tree = new Tree(Text(CliApplication.DescribeType(type)));
                     foreach (var member in type.Members)
                         tree.AddNode(Text(member.Signature));
+                    foreach (var note in type.Notes)
+                        tree.AddNode(new Text("note: " + note, new Style(foreground: Color.Yellow)));
                     console.Write(tree);
                 }
                 if (assembly.ForwardedTypes.Count != 0)
@@ -191,11 +197,13 @@ internal static class TerminalRenderer
                 foreach (var limit in audit.Limitations) Note(console, limit);
                 break;
             case ReviewReport review:
-                var reviewTable = Table("Package", "Current", "Selected", "Status");
+                var reviewTable = Table("Package", "Current", "Selected", "Status", "Publish age");
                 foreach (var package in review.Packages)
-                    reviewTable.AddRow(Text(package.Package), Text(package.Current), Text(package.Selected ?? "unknown"), Text(package.Status));
+                    reviewTable.AddRow(Text(package.Package), Text(package.Current), Text(package.Selected ?? "unknown"), Text(package.Status),
+                        Text(package.PublishAge is { } age ? age.Result + (age.AgeHours is { } hours ? $" ({hours.ToString(CultureInfo.InvariantCulture)} h)" : "") : ""));
                 console.Write(reviewTable);
-                Note(console, $"{review.PackageCount} packages; {review.UpdateCount} newer candidates; {review.FailureCount} incomplete.");
+                Note(console, $"{review.PackageCount} packages; {review.UpdateCount} newer candidates; {review.YoungerThanMinimumCount} younger than the minimum publish age; {review.FailureCount} incomplete.");
+                Note(console, CliApplication.DescribeMinimumPublishAge(review.MinimumPublishAge));
                 Note(console, "Evidence: " + review.ReportPath);
                 break;
             case ErrorReport error:
@@ -262,7 +270,7 @@ internal static class TerminalRenderer
         Evidence(console, report.SourcePath, $"Static IL · {report.MethodBodiesScanned} method bodies · {report.Findings.Count} review points");
         var findings = Table("Caller / IL", "Target", "Category");
         foreach (var finding in report.Findings.Take(40))
-            findings.AddRow(Text($"{finding.Caller}\nIL_{finding.IlOffset:x4}"),
+            findings.AddRow(Text($"{finding.Caller}\nIL_{finding.IlOffset:x4}" + (finding.DeclaredMethod is null ? "" : $"\ndeclared method {finding.DeclaredMethod}")),
                 Text($"{finding.TargetType}.{finding.TargetMember}"), Text(finding.Category));
         if (report.Findings.Count != 0) console.Write(findings);
         if (report.Findings.Count > 40) Note(console, "Showing the first 40 findings; use --json for all findings.");

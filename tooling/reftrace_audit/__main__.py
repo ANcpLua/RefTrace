@@ -91,6 +91,7 @@ def main(argv: list[str] | None = None) -> int:
                 selected = row["catalog"]["selected"]
                 registration = json.loads(cache.get(f'{feed["registration"]}{row["package"].lower()}/{selected.lower()}.json'))
                 if registration.get("listed") is True:
+                    row["selectedPublished"] = registration.get("published")
                     break
                 row["excludedUnlisted"].append(selected)
                 filtered["versions"] = [v for v in filtered["versions"] if v.lower() != selected.lower()]

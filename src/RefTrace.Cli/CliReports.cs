@@ -8,6 +8,7 @@ internal sealed record ErrorReport(string Code, string Message, string? Input = 
 internal sealed record WhyReport(string SourcePath, string Target, DependencyTrace Trace);
 internal sealed record ProcessReport(IReadOnlyList<DiagnosticProcess> Processes);
 internal sealed record PackageItem(string Id, string Version, bool Direct,
-    IReadOnlyList<string>? CompileAssets = null, IReadOnlyList<string>? RuntimeAssets = null);
+    IReadOnlyList<string>? CompileAssets = null, IReadOnlyList<string>? RuntimeAssets = null,
+    IReadOnlyList<string>? AnalyzerAssets = null);
 internal sealed record PackageReport(string SourcePath, string Target, IReadOnlyList<PackageItem> Packages,
-    IReadOnlyList<string> UnresolvedDependencies);
+    IReadOnlyList<string> UnresolvedDependencies, bool AnalyzerAssetsRecorded);

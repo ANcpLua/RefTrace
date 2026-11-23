@@ -30,6 +30,27 @@ public sealed class CliTests(TestContext context)
     }
 
     [TestMethod]
+    public async Task Packages_Assets_ShowAnalyzerAssetsOrSayTheyWereNotRecorded()
+    {
+        var unrecorded = await RunAsync("packages", AssetsFile(), "--assets", "--plain");
+        Assert.AreEqual(0, unrecorded.Exit);
+        Assert.Contains(CliApplication.AnalyzerAssetsNotRecorded, unrecorded.Output);
+
+        var path = Path.Combine(context.TestTempDirectory!, "analyzers.assets.json");
+        await File.WriteAllTextAsync(path, Fixtures.WithAnalyzerAssets(), context.CancellationToken);
+        var plain = await RunAsync("packages", path, "--assets", "--plain");
+        Assert.Contains(string.Join(Environment.NewLine, "  compile: ref/net10.0/Alpha.dll",
+            "  analyzer: analyzers/dotnet/roslyn4.8/cs/Alpha.Analyzers.dll"), plain.Output);
+        Assert.DoesNotContain(CliApplication.AnalyzerAssetsNotRecorded, plain.Output);
+        var json = await RunAsync("packages", path, "--assets", "--json");
+        using var document = JsonDocument.Parse(json.Output);
+        var data = document.RootElement.GetProperty("data");
+        Assert.IsTrue(data.GetProperty("analyzerAssetsRecorded").GetBoolean());
+        var alpha = data.GetProperty("packages").EnumerateArray().Single(p => p.GetProperty("id").GetString() == "Alpha");
+        Assert.AreEqual(2, alpha.GetProperty("analyzerAssets").GetArrayLength());
+    }
+
+    [TestMethod]
     public async Task Why_KnownAndMissingDependencies_HaveDistinctExitCodes()
     {
         var path = AssetsFile();

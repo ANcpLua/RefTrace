@@ -3,6 +3,10 @@
 The subsequent [transitive compatibility review](TRANSITIVE-REVIEW.md) supersedes
 the six package retentions and the outstanding collection-expression suggestion
 recorded below. This document preserves the initial 0.7.0 review results.
+The current `global.json` pins SDK `11.0.100`, and `Directory.Packages.props` pins
+System.CommandLine and Microsoft.DiaSymReader `3.0.0` and System.Security.Cryptography.Pkcs,
+System.Security.Cryptography.ProtectedData and Microsoft.Extensions.DependencyModel
+`11.0.0`; the rc.3 versions below are the ones reviewed then.
 
 This run applied the complete [async/API modernization goal](ASYNC-THREADING.md)
 to RefTrace itself, starting from `df9347e38a72478d906500e2decca5625af7ba28`.
@@ -10,6 +14,8 @@ The installed `ref` command performed the initial full review; the updated comma
 repeated release selection against the restored final graph. Raw package bytes,
 source revisions, API comparisons, analyzer compiler inputs and logs stay under
 `artifacts/api-review/20261029-self/` and are not checked in.
+(2026-11-23: that material was local and untracked, and it was deleted on 2026-11-23. It
+no longer exists.)
 
 ## Release selection
 
@@ -29,6 +35,11 @@ coordinates, with six deliberate transitive retentions and zero collection failu
 | Spectre.Console | 0.57.3-alpha.0.29 | Already newest listed |
 | Microsoft.Diagnostics.NETCore.Client | 0.2.750501 | Already newest listed |
 | Microsoft.Diagnostics.Tracing.TraceEvent | 4.0.0 | Already newest listed |
+
+> 2026-11-23: NuGet.ProjectModel is pinned at `8.0.0`, released on 2026-11-10; every NuGet
+> package in the graph resolves to `8.0.0`. The `ref review` comparison of 7.9.0 with 8.0.0 is
+> recorded in the [transitive review](TRANSITIVE-REVIEW.md#recheck-on-the-released-packages--2026-11-23).
+> The 7.9.0 row above records what was newest on 2026-10-29.
 
 “Newest” means a listed NuGet release selected with NuGet version ordering, including
 newer prereleases. It does not mean a documentation framework selector or an unreleased
@@ -193,5 +204,7 @@ applies to waiting for the reader after stream disposal, not to arbitrary third-
 
 Local commands: `make build`, `make test`, `make audit-test`, `make inspect`.
 The final TRX is `artifacts/test-results.Mma2ij/RefTrace.Tests_net11.0_arm64.trx`.
+(2026-11-23: that file was local and untracked, and it was deleted on 2026-11-23. It no
+longer exists.)
 CI and local-package installation are checked separately from source/package inspection.
 No public NuGet release is part of this review. No performance improvement is claimed.

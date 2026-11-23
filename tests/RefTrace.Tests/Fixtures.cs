@@ -26,6 +26,20 @@ internal static class Fixtures
         }
         """;
 
+    // Analyzer assets as NuGet 8.0 records them when a project sets RestoreEnableAnalyzerAssets.
+    internal static string WithAnalyzerAssets() => Modify(j =>
+    {
+        j["targets"]!["net10.0"]!["Alpha/2.0.0"]!["analyzers"] = JsonNode.Parse("""
+            {
+              "analyzers/dotnet/roslyn5.0/cs/Alpha.Analyzers.dll": { "codeLanguage": "cs", "compilerApiVersion": "roslyn5.0" },
+              "analyzers/dotnet/roslyn4.8/cs/Alpha.Analyzers.dll": { "codeLanguage": "cs", "compilerApiVersion": "roslyn4.8" }
+            }
+            """);
+        j["project"] = JsonNode.Parse("""
+            { "version": "1.0.0", "restore": { "projectUniqueName": "/app/App.csproj", "projectPath": "/app/App.csproj", "projectName": "App", "restoreEnableAnalyzerAssets": true, "originalTargetFrameworks": ["net10.0"], "frameworks": { "net10.0": { "targetAlias": "net10.0" } } }, "frameworks": { "net10.0": { "framework": "net10.0", "targetAlias": "net10.0" } } }
+            """);
+    });
+
     internal static DependencyGraph Read(string json = Assets, string? target = null)
     {
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
