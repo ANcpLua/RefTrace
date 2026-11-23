@@ -8,7 +8,7 @@ internal static class PeMetadata
     public static IReadOnlyDictionary<string, string?> AssemblyProperties(MetadataReader reader)
     {
         var names = new MetadataNames(reader);
-        var values = new SortedDictionary<string, string?>(StringComparer.Ordinal);
+        SortedDictionary<string, string?> values = [with(StringComparer.Ordinal)];
         foreach (var handle in reader.GetAssemblyDefinition().GetCustomAttributes())
         {
             var attribute = reader.GetCustomAttribute(handle);

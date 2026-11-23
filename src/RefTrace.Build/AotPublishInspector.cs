@@ -126,7 +126,7 @@ public static partial class AotPublishInspector
             if (json.RootElement.ValueKind != JsonValueKind.Object
                 || !json.RootElement.TryGetProperty("Properties", out var properties) || properties.ValueKind != JsonValueKind.Object)
                 return new(phase, false, new Dictionary<string, string>(), "MSBuild did not return a Properties object.");
-            var result = new SortedDictionary<string, string>(StringComparer.Ordinal);
+            SortedDictionary<string, string> result = [with(StringComparer.Ordinal)];
             foreach (var property in properties.EnumerateObject())
             {
                 if (property.Value.ValueKind != JsonValueKind.String)
