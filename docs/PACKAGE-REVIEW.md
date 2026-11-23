@@ -14,6 +14,8 @@ The initial collection inspected 33 resolved package coordinates and 24 package 
 The follow-up collection also covered 33 coordinates. Both completed without collection
 failures. Full records, source files, DLL reports and decompilation diffs are kept in
 `artifacts/package-audit/` with timestamped run directories.
+(2026-11-23: that material was local and untracked, and it was deleted on 2026-11-23. It
+no longer exists.)
 
 ## Direct dependencies
 

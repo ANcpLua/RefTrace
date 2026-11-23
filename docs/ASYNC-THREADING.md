@@ -3,7 +3,9 @@
 Last reviewed: **2026-11-23**. Scope: the APIs and patterns in the originally supplied
 `dotnet11_async_bestinslot_reference.md`, plus their direct replacements in RefTrace.
 That original is not in the repository; a copy exists only as a local, git-ignored
-artifact at `artifacts/async-reference-20261029/original-reference.md`. This revision
+artifact at `artifacts/async-reference-20261029/original-reference.md`.
+(2026-11-23: that file was local and untracked, and it was deleted on 2026-11-23. It no
+longer exists.) This revision
 merges the generalized 2026-11-02 revision of that reference, which now carries the
 same file name, into the 2026-10-29 guide and rechecks the merged statements against
 the installed RC3 SDK. Unchanged rows date from 2026-10-29; the RefTrace validation
@@ -130,7 +132,9 @@ Sources: [official release feed][releases], [GA source manifest][manifest-ga],
 Raw source receipts and local verification for the 2026-10-29 revision are under
 `artifacts/async-reference-20261029/`. Artifacts are intentionally untracked.
 Analyzer package/source receipts and compiler-input checks are under
-`artifacts/analyzer-adoption-20261029/`. The package SHA-512 matched the NuGet
+`artifacts/analyzer-adoption-20261029/`.
+(2026-11-23: both folders were local and untracked, and they were deleted on 2026-11-23.
+Their contents no longer exist.) The package SHA-512 matched the NuGet
 catalog; this verifies matching bytes, not reproducible source-to-binary provenance.
 The 2026-11-10 merge checks used throwaway probes; no receipt directory was kept.
 
@@ -669,6 +673,8 @@ the former StreamReader calls, its inspected implementation does not autodetect 
 different encoding from an output BOM. The tested contract is normal .NET CLI text
 output. Recheck encoding requirements before applying this replacement elsewhere.
 This run's .NET result file is `artifacts/test-results.POtxIL/RefTrace.Tests_net11.0_arm64.trx`.
+(2026-11-23: that file was local and untracked, and it was deleted on 2026-11-23. It no
+longer exists.)
 The analyzer found two synchronous fixture file writes, now awaited, and missing
 tokens in runtime-test cleanup. Cleanup now has its own three-second cancellation
 source so a canceled test still terminates and joins its child process.

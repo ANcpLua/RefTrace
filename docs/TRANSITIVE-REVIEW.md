@@ -27,6 +27,8 @@ The remaining MSTest extension profile still supplies TRX reporting and coverage
 The shipped CLI never contained either removed package; its runtime dependency
 inventory is unchanged. Removal evidence is saved under
 `artifacts/telemetry-removal-20261030/`.
+(2026-11-23: that material was local and untracked, and it was deleted on 2026-11-23. It
+no longer exists.)
 
 The 0.8.1 Release build has zero warnings or errors. Normal execution and execution
 with coverage both pass all 125 tests, with zero failures or skips; coverage contains
@@ -45,6 +47,8 @@ The review started at `f686a2e2de5eacbe31975ca60b4ce12e9fb34a62`. Fresh NuGet li
 receipts, package hashes, exact source, isolated probes, test results and diagnostic
 stacks are under `artifacts/transitive-review-20261029/`; the directory name records
 the UTC start date. Downloaded package source is not committed.
+(2026-11-23: that material was local and untracked, and it was deleted on 2026-11-23. It
+no longer exists.)
 
 ## Decisions
 

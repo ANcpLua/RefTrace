@@ -14,6 +14,8 @@ The installed `ref` command performed the initial full review; the updated comma
 repeated release selection against the restored final graph. Raw package bytes,
 source revisions, API comparisons, analyzer compiler inputs and logs stay under
 `artifacts/api-review/20261029-self/` and are not checked in.
+(2026-11-23: that material was local and untracked, and it was deleted on 2026-11-23. It
+no longer exists.)
 
 ## Release selection
 
@@ -202,5 +204,7 @@ applies to waiting for the reader after stream disposal, not to arbitrary third-
 
 Local commands: `make build`, `make test`, `make audit-test`, `make inspect`.
 The final TRX is `artifacts/test-results.Mma2ij/RefTrace.Tests_net11.0_arm64.trx`.
+(2026-11-23: that file was local and untracked, and it was deleted on 2026-11-23. It no
+longer exists.)
 CI and local-package installation are checked separately from source/package inspection.
 No public NuGet release is part of this review. No performance improvement is claimed.
