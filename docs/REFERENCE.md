@@ -79,8 +79,8 @@ reflection, dynamic loading and dynamic-code method references with caller token
 offsets. Operands are not mistaken for opcodes. It does not prove execution or reachability.
 `--fail-on-findings` makes these references an explicit exit-1 policy.
 `caller`, `callerToken` and `ilOffset` locate the IL that contains the call. When that IL
-is the generated `MoveNext` of an async or iterator state machine, `declaredMethod` names
-the method the source declared, found through its `AsyncStateMachineAttribute`,
+is the generated `MoveNext` of an async or iterator state machine, `declaredMethod` and
+`declaredMethodToken` name the method the source declared, found through its `AsyncStateMachineAttribute`,
 `IteratorStateMachineAttribute` or `AsyncIteratorStateMachineAttribute`. A runtime-async
 method (C# 15, `runtime-async=on`) has no state machine: its calls have the method itself as
 `caller` and no `declaredMethod`. Lambdas and local functions are reported under their

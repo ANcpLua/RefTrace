@@ -94,6 +94,8 @@ public sealed class LanguageMetadataTests
         var lowered = findings.Single(f => f.DeclaredMethod == Namespace + "Lookups.StateMachine");
         Assert.StartsWith(Namespace + "Lookups+<StateMachine>", lowered.Caller);
         Assert.EndsWith(".MoveNext", lowered.Caller);
+        Assert.StartsWith("0x06", lowered.DeclaredMethodToken!);
+        Assert.AreNotEqual(lowered.CallerToken, lowered.DeclaredMethodToken);
         Assert.AreEqual("GetType", lowered.TargetMember);
     }
 

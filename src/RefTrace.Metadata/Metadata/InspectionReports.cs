@@ -6,6 +6,8 @@ public sealed record ReflectionFinding(string Caller, string CallerToken, int Il
     string TargetAssembly, string TargetType, string TargetMember, string Category, string Reason)
 {
     public string? DeclaredMethod { get; init; }
+    // Metadata token of the declared method; it tells overloads with the same name apart.
+    public string? DeclaredMethodToken { get; init; }
 }
 public sealed record ReflectionReport(string SourcePath, string AssemblyName, string ModuleVersionId,
     int MethodBodiesScanned, string CatalogVersion, IReadOnlyList<ReflectionFinding> Findings,
