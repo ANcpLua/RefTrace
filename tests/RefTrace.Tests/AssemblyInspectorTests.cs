@@ -14,10 +14,10 @@ public sealed class AssemblyInspectorTests
     {
         var report = AssemblyInspector.Read(typeof(AssemblyInspector).Assembly.Location);
         Assert.AreEqual("RefTrace.Metadata", report.Identity.Name);
-        Assert.AreEqual("0.9.0.0", report.Identity.Version);
+        Assert.AreEqual("0.10.0.0", report.Identity.Version);
         Assert.AreEqual(".NETCoreApp,Version=v11.0", report.TargetFramework);
-        Assert.AreEqual("0.9.0.0", report.FileVersion);
-        Assert.StartsWith("0.9.0", report.InformationalVersion!);
+        Assert.AreEqual("0.10.0.0", report.FileVersion);
+        Assert.StartsWith("0.10.0", report.InformationalVersion!);
         Assert.IsNull(report.Identity.PublicKeyToken);
         Assert.IsFalse(report.IsReferenceAssembly);
         Assert.IsTrue(Guid.TryParse(report.ModuleVersionId, out _));

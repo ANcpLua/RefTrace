@@ -14,7 +14,7 @@ The first NuGet release is pending. Install the current source with the .NET 11 
 
 ```sh
 dotnet pack src/RefTrace.Cli -c Release -o artifacts/packages
-dotnet tool install --global RefTrace --version 0.9.0-preview.1 --source artifacts/packages
+dotnet tool install --global RefTrace --version 0.10.0-preview.1 --source artifacts/packages
 ref help
 ```
 

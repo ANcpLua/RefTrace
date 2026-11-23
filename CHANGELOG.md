@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.10.0-preview.1
+
+* Target NuGet 8.0: NuGet.ProjectModel 8.0.0 replaces 7.9.0, and all nine NuGet packages resolve to 8.0.0.
+* List the analyzer assets that restore records with `RestoreEnableAnalyzerAssets` in `packages --assets` and
+  graph JSON, and say when a restore did not record them.
+* Report review candidates younger than the minimum publish age configured for nuget.org, with the matching
+  exception pattern, through NuGet.Configuration 8.0.
+* Describe C# 15 and .NET 11 types in `assembly`: closed classes and their direct subtypes, union cases,
+  extension members with their receiver instead of compiler scaffolding, extended layout with a note for
+  reference fields the runtime rejects, memory-safety rules and members that require an unsafe context.
+* Report type modifiers and layout, and stop printing final methods, such as interface implementations, as
+  `virtual`. `signature` text therefore changes for existing assemblies, as it does for extension members
+  (`extension(...)` prefix) and members that require an unsafe context (`unsafe`); compare API reports made
+  by the same RefTrace version.
+* Name the declared method for reflection calls inside async and iterator state machines.
+* Compile RefTrace with C# 15 runtime async.
+* Stop `global.json` from selecting prerelease SDKs.
+* Run the AOT publish tree-kill test in parallel again; .NET 11.0.0 fixes the RC3 macOS reaping stall.
+* Recheck the transitive pins and the async guide on SDK 11.0.100, the 11.0.0 runtime and NuGet 8.0.
+
 ## 0.9.0-preview.1
 
 * Accept explicit .slnx solutions for package reviews and project input resolution.
