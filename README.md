@@ -6,11 +6,11 @@ RefTrace helps you follow a package back to its source, look inside a DLL, and c
 a running app. It shows what it found and tells you when there is not enough information
 to draw a conclusion.
 
-Private preview development on .NET 11 RC3.
+Private preview development on .NET 11.
 
 ## Install
 
-The first NuGet release is pending. Install the current source with the .NET 11 RC3 SDK:
+The first NuGet release is pending. Install the current source with the .NET 11 SDK:
 
 ```sh
 dotnet pack src/RefTrace.Cli -c Release -o artifacts/packages

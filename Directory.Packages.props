@@ -6,17 +6,17 @@
   <ItemGroup>
     <GlobalPackageReference Include="Meziantou.Analyzer" Version="3.0.317" />
     <PackageVersion Include="NuGet.ProjectModel" Version="7.9.0" />
-    <PackageVersion Include="System.CommandLine" Version="3.0.0-rc.3.26522.148" />
-    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="11.0.0-rc.3.26522.148" />
+    <PackageVersion Include="System.CommandLine" Version="3.0.0" />
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="11.0.0" />
     <PackageVersion Include="Spectre.Console" Version="0.57.3-alpha.0.29" />
     <PackageVersion Include="Microsoft.Diagnostics.NETCore.Client" Version="0.2.750501" />
     <PackageVersion Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="4.0.0" />
     <!-- Transitive upgrades validated against their consumers; see docs/TRANSITIVE-REVIEW.md. -->
-    <PackageVersion Include="Microsoft.DiaSymReader" Version="3.0.0-rc.3.26522.148" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyModel" Version="11.0.0-rc.3.26522.148" />
+    <PackageVersion Include="Microsoft.DiaSymReader" Version="3.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyModel" Version="11.0.0" />
     <PackageVersion Include="Microsoft.TestPlatform.ObjectModel" Version="18.11.0" />
     <PackageVersion Include="Newtonsoft.Json" Version="14.0.1-beta2" />
-    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="11.0.0-rc.3.26522.148" />
+    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="11.0.0" />
     <!-- Optional MSTest usage reporting; pruning it also removes Application Insights.
          Review this bound when the owning adapter advances its telemetry dependency. -->
     <PrunePackageReference Include="Microsoft.Testing.Extensions.Telemetry" Version="2.5.2" />

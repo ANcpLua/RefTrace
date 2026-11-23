@@ -11,6 +11,8 @@ record keeps its own date and was not rerun.
 As of 2026-11-10, .NET 11 general availability is scheduled for the same day
 ([schedule][release-schedule]); this document describes RC3, and every row must be
 rechecked against the GA SDK once a checkout selects it.
+Since 2026-11-23 `global.json` selects SDK `11.0.100`. That recheck is still open: every row below, including the
+version baseline, describes RC3.
 This is a decision guide and a repeatable modernization task, not a claim that one
 primitive is fastest for every workload or an inventory of the entire .NET API.
 

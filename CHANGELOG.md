@@ -5,6 +5,8 @@
 * Accept explicit .slnx solutions for package reviews and project input resolution.
 * Review only the listed .NET projects, excluding unrelated prototypes and local examples.
 * Report malformed solutions and missing project paths with actionable diagnostics.
+* Target the .NET 11 release: SDK 11.0.100, System.CommandLine and Microsoft.DiaSymReader 3.0.0, and the 11.0.0
+  releases of Pkcs, ProtectedData and DependencyModel replace their RC3 builds.
 
 ## 0.8.1-preview.1
 

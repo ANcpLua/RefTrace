@@ -12,7 +12,7 @@ Project inputs evaluate MSBuild properties without running build targets; import
 configuration and property functions are evaluated in the project's existing environment.
 Live observation is a separate command using the target's diagnostics endpoint.
 
-Requires the .NET 11 RC3 runtime. Development uses the SDK pinned in `global.json`.
+Requires the .NET 11 runtime. Development uses the SDK pinned in `global.json`.
 
 ## Commands
 

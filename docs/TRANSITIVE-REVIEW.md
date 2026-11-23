@@ -1,5 +1,9 @@
 # Transitive compatibility review — 2026-10-30
 
+> 2026-11-23: the pins moved from the RC3 builds to the released packages (DiaSymReader 3.0.0; DependencyModel
+> and ProtectedData 11.0.0). The review below was performed on RC3 and has not been rerun on the released
+> packages; the build and the test suite pass with them.
+
 The 0.8.0 review tested all six candidates retained by the [0.7.0 self-review](SELF-REVIEW.md).
 Five explicit transitive pins live in `Directory.Packages.props`, with
 `CentralPackageTransitivePinningEnabled`. Application Insights was initially retained
