@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import gzip
+from http.client import IncompleteRead
 import io
 import json
 import re
@@ -20,6 +21,9 @@ import zipfile
 
 class AuditError(RuntimeError):
     pass
+
+
+MAX_DOWNLOAD = 256 * 1024 * 1024
 
 
 class Cache:
@@ -54,10 +58,24 @@ class Cache:
             try:
                 request = Request(url, headers={"User-Agent": "RefTrace-package-audit/0.1"})
                 with urlopen(request, timeout=30) as response:
-                    data = response.read(256 * 1024 * 1024 + 1)
+                    # read(n) returns a body cut off by the network without an error when the
+                    # response has a Content-Length; only a chunked body raises IncompleteRead.
+                    data = response.read(MAX_DOWNLOAD + 1)
+                    declared = response.headers.get("Content-Length")
+                    chunked = "chunked" in response.headers.get("Transfer-Encoding", "").lower()
+                if len(data) > MAX_DOWNLOAD:
+                    raise AuditError(f"Download exceeds 256 MiB: {url}")
+                if not chunked and declared is not None and len(data) < int(declared):
+                    raise IncompleteRead(data, int(declared) - len(data))
+                if not chunked and declared is None and immutable:
+                    # Without either framing the body ends where the connection closes, so a cut-off
+                    # body cannot be told from a complete one. Immutable entries are reused by every
+                    # later run, so such a body is not accepted as evidence.
+                    raise AuditError(f"Response declares neither Content-Length nor chunked encoding; "
+                                     f"a complete body cannot be told from a cut-off one: {url}")
                 if data[:2] == b"\x1f\x8b":
                     data = gzip.decompress(data)
-                if len(data) > 256 * 1024 * 1024:
+                if len(data) > MAX_DOWNLOAD:
                     raise AuditError(f"Download exceeds 256 MiB: {url}")
                 with tempfile.NamedTemporaryFile(dir=self.root, delete=False) as temporary:
                     temporary.write(data)
@@ -75,6 +93,12 @@ class Cache:
             except HTTPError as error:
                 if error.code not in (429, 502, 503, 504) or attempt == 2:
                     raise AuditError(f"HTTP {error.code}: {url}") from error
+                time.sleep(attempt + 1)
+            except IncompleteRead as error:
+                if attempt == 2:
+                    missing = "" if error.expected is None else f", {error.expected} more expected"
+                    raise AuditError(f"Incomplete download ({len(error.partial)} bytes received{missing}); "
+                                     f"nothing was cached: {url}") from error
                 time.sleep(attempt + 1)
         raise AuditError(f"Could not retrieve {url}")
 

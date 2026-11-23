@@ -3,8 +3,12 @@ import hashlib
 import io
 import json
 from pathlib import Path
+import socketserver
 import tempfile
+import threading
 import unittest
+from urllib.parse import urlparse
+from urllib.request import Request, urlopen
 import zipfile
 import gzip
 from unittest.mock import patch
@@ -12,6 +16,40 @@ from unittest.mock import patch
 from tooling.reftrace_audit.nuget import AuditError, Cache, assemblies, source_url, unpack, validate_hash
 from tooling.reftrace_audit.inspect import compare, run
 from tooling.reftrace_audit.__main__ import inventory
+
+
+def served(body: bytes) -> io.BytesIO:
+    """A complete response body as urlopen returns it, with its Content-Length."""
+    response = io.BytesIO(body)
+    response.headers = {"Content-Length": str(len(body))}
+    return response
+
+
+class CutOffServer(socketserver.ThreadingTCPServer):
+    """Answers each path with fixed raw HTTP bytes and closes the connection: 1000 bytes announced, 400 sent."""
+    daemon_threads = True
+    allow_reuse_address = True
+    RESPONSES = {
+        "/length": b"HTTP/1.1 200 OK\r\nContent-Length: 1000\r\nConnection: close\r\n\r\n" + b"x" * 400,
+        "/length-complete": b"HTTP/1.1 200 OK\r\nContent-Length: 1000\r\nConnection: close\r\n\r\n" + b"x" * 1000,
+        "/chunked": b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n3e8\r\n" + b"x" * 400,
+        "/neither": b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n" + b"x" * 400,
+    }
+
+    def __init__(self):
+        self.requests: dict[str, int] = {}
+        self.lock = threading.Lock()
+        super().__init__(("127.0.0.1", 0), CutOffHandler)
+
+
+class CutOffHandler(socketserver.StreamRequestHandler):
+    def handle(self):
+        path = self.rfile.readline().split()[1].decode()
+        while self.rfile.readline() not in (b"\r\n", b""):
+            pass
+        with self.server.lock:
+            self.server.requests[path] = self.server.requests.get(path, 0) + 1
+        self.wfile.write(self.server.RESPONSES[path])
 
 
 class EvidenceTests(unittest.TestCase):
@@ -99,7 +137,7 @@ class EvidenceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             url = "https://api.nuget.org/example.json"
             cache = Cache(Path(directory))
-            with patch("tooling.reftrace_audit.nuget.urlopen", return_value=io.BytesIO(gzip.compress(b'{"value":1}'))):
+            with patch("tooling.reftrace_audit.nuget.urlopen", return_value=served(gzip.compress(b'{"value":1}'))):
                 self.assertEqual(b'{"value":1}', cache.get(url))
             offline = Cache(Path(directory), offline=True)
             self.assertEqual(b'{"value":1}', offline.get(url))
@@ -109,7 +147,7 @@ class EvidenceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             url = "https://api.nuget.org/example.json"
             cache = Cache(Path(directory))
-            with patch("tooling.reftrace_audit.nuget.urlopen", return_value=io.BytesIO(b"original")):
+            with patch("tooling.reftrace_audit.nuget.urlopen", return_value=served(b"original")):
                 cache.get(url)
             (Path(directory) / hashlib.sha256(url.encode()).hexdigest()).write_bytes(b"changed")
             with self.assertRaisesRegex(AuditError, "Cached bytes"):
@@ -146,6 +184,73 @@ class EvidenceTests(unittest.TestCase):
             report = json.loads(Path(paths[0]).read_text())
             self.assertEqual(["Example::public System.Void Run(System.String value)"], report["added"])
             self.assertEqual(["Example::public System.Void Run(System.Int32 value)"], report["removed"])
+
+
+
+class CutOffDownloadTests(unittest.TestCase):
+    """A real local server cuts each body off; the real urllib client reads it through Cache.get."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.server = CutOffServer()
+        threading.Thread(target=cls.server.serve_forever, daemon=True).start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+
+    def fetch(self, path: str, *, immutable: bool):
+        """Returns (bytes or the AuditError, cached file names, requests the server saw)."""
+        port = self.server.server_address[1]
+
+        def local(request, timeout):
+            target = f"http://127.0.0.1:{port}{urlparse(request.full_url).path}"
+            return urlopen(Request(target, headers=dict(request.header_items())), timeout=timeout)
+
+        self.server.requests.clear()
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Cache(Path(directory))
+            with (patch("tooling.reftrace_audit.nuget.urlopen", side_effect=local),
+                  patch("tooling.reftrace_audit.nuget.time.sleep")):
+                try:
+                    result = cache.get(f"https://api.nuget.org{path}", immutable=immutable)
+                except AuditError as error:
+                    result = error
+            return result, sorted(item.name for item in Path(directory).iterdir()), self.server.requests.get(path, 0)
+
+    def test_body_shorter_than_its_content_length_is_retried_and_never_cached(self):
+        for immutable in (True, False):
+            with self.subTest(immutable=immutable):
+                result, cached, requests = self.fetch("/length", immutable=immutable)
+                self.assertIsInstance(result, AuditError)
+                self.assertIn("400 bytes received, 600 more expected", str(result))
+                self.assertEqual([], cached)
+                self.assertEqual(3, requests)
+        result, cached, requests = self.fetch("/length-complete", immutable=True)
+        self.assertEqual(b"x" * 1000, result)
+        self.assertEqual(2, len(cached))
+        self.assertEqual(1, requests)
+
+    def test_cut_off_chunked_body_is_retried_and_never_cached(self):
+        for immutable in (True, False):
+            with self.subTest(immutable=immutable):
+                result, cached, requests = self.fetch("/chunked", immutable=immutable)
+                self.assertIsInstance(result, AuditError)
+                self.assertIn("Incomplete download", str(result))
+                self.assertEqual([], cached)
+                self.assertEqual(3, requests)
+
+    def test_body_without_length_or_chunking_is_not_immutable_evidence(self):
+        result, cached, requests = self.fetch("/neither", immutable=True)
+        self.assertIsInstance(result, AuditError)
+        self.assertIn("neither Content-Length nor chunked encoding", str(result))
+        self.assertEqual([], cached)
+        self.assertEqual(1, requests)
+        # Mutable metadata is cached for an hour and refetched; its readers parse it as JSON.
+        result, cached, requests = self.fetch("/neither", immutable=False)
+        self.assertEqual(b"x" * 400, result)
+        self.assertEqual(2, len(cached))
 
 
 if __name__ == "__main__":
