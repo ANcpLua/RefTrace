@@ -10,7 +10,7 @@ Private preview development on .NET 11.
 
 ## Install
 
-The first NuGet release is pending. Install the current source with the .NET 11 SDK:
+The first NuGet release is pending. Install the current source with the .NET 11 SDK (11.0.100, pinned in `global.json`):
 
 ```sh
 dotnet pack src/RefTrace.Cli -c Release -o artifacts/packages

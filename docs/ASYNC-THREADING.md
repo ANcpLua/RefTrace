@@ -8,11 +8,10 @@ merges the generalized 2026-11-02 revision of that reference, which now carries 
 same file name, into the 2026-10-29 guide and rechecks the merged statements against
 the installed RC3 SDK. Unchanged rows date from 2026-10-29; the RefTrace validation
 record keeps its own date and was not rerun.
-As of 2026-11-10, .NET 11 general availability is scheduled for the same day
-([schedule][release-schedule]); this document describes RC3, and every row must be
-rechecked against the GA SDK once a checkout selects it.
-Since 2026-11-23 `global.json` selects SDK `11.0.100`. That recheck is still open: every row below, including the
-version baseline, describes RC3.
+.NET 11.0.0 (SDK 11.0.100) was released on 2026-11-10 ([release notes][release-ga]),
+and this checkout's `global.json` now selects SDK 11.0.100. This document still
+describes RC3: its rows have not been rechecked against the GA SDK, and every row must
+be rechecked before it is relied on for GA.
 This is a decision guide and a repeatable modernization task, not a claim that one
 primitive is fastest for every workload or an inventory of the entire .NET API.
 
@@ -114,6 +113,11 @@ new releases and source changes again; the document does not monitor them itself
 | Newer Meziantou.Analyzer named by the 2026-11-02 reference | `3.0.320`; source `2a42a781bc8fb3c507f63c4bcfbf9719619337b2` | Published 2026-11-01; not adopted by RefTrace. NuGet also listed `3.0.321` and `3.0.322` by 2026-11-10; no review covers those |
 | Meziantou.Analyzer.Annotations | `1.8.0` | Separate optional package, still the newest listed on 2026-11-10; not required below |
 
+The baseline above was recorded against RC3. Since 2026-11-10 the official release feed
+lists SDK `11.0.100` and runtime `11.0.0` (release date `2026-11-10`) as the latest
+.NET 11 entry, and the repository `global.json` pins `11.0.100`; the remaining rows
+have not been re-observed on that SDK.
+
 Sources: [official release feed][releases], [unified source manifest][manifest],
 [RC3 tag][runtime-tag], [newer analyzer package][analyzer-package-320].
 Raw source receipts and local verification for the 2026-10-29 revision are under
@@ -154,12 +158,22 @@ merged 2026-10-14). Both changes are absent from installed RC3: its decompiled
 whole-repository equivalence claim.
 [RC3 implementation][process-unix], [release implementation][process-unix-release]
 
+The 11.0.0 release carries both changes in source. The unified source manifest of the
+installed SDK 11.0.100 (`dotnet/dotnet` revision `297acf930fb0f5c07fd4e51d78e521b4ad2e5d1f`)
+names runtime revision `deae2e32bf0e018e09d64597b7c59b62b73bb3ce`, the `v11.0.0` tag,
+and that revision's `Process.Unix.cs` and `ProcessWaitState.Unix.cs` have the same Git
+blob IDs as the recorded `release/11.0` snapshot (checked 2026-11-22). The installed GA
+binary was not decompiled.
+[GA source manifest][manifest-ga], [GA implementation][process-unix-ga]
+
 For RefTrace, `src/RefTrace.Build/ProcessCapture.cs` and
 `src/RefTrace.Build/AotPublishInspector.cs` call `Kill(entireProcessTree: true)` on
 cancellation or deadline, which is exactly the API the backport fixes. On RC3 they
 therefore kill root first on every Unix target, and on macOS a canceled or timed-out
 capture can hang the calling process (`ref` or a test host) or trigger the
-process-group signals above.
+process-group signals above. On the 11.0.0 source they kill descendants first and
+use the fixed reaping loop; the tree-kill tests pass on SDK 11.0.100 in CI on macOS,
+Linux and Windows ([CI run][ci-ga]).
 RefTrace does not choose either behavior. Its 2026-10-29 tree-kill tests passed on
 macOS, which shows the hang is not deterministic, not that it cannot happen. Check a
 hang after macOS cancellation or timeout against this defect first, and recheck both
@@ -697,7 +711,10 @@ checks were not rerun.
 [stream]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Private.CoreLib/src/System/IO/Stream.cs
 [process-unix]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Unix.cs#L111-L194
 
-[release-schedule]: https://github.com/dotnet/core/blob/5f99c19c62154814a35716e0726c82be29c690de/releases.md
+[manifest-ga]: https://github.com/dotnet/dotnet/blob/297acf930fb0f5c07fd4e51d78e521b4ad2e5d1f/src/source-manifest.json
+[process-unix-ga]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Unix.cs
+[ci-ga]: https://github.com/ANcpLua/RefTrace/actions/runs/45026494105
+[release-ga]: https://github.com/dotnet/core/blob/main/release-notes/11.0/11.0.0/11.0.0.md
 [runtime-tag]: https://api.github.com/repos/dotnet/runtime/git/ref/tags/v11.0.0-rc.3.26522.148
 [article-rc3-benchmarks]: https://www.meziantou.net/runtime-async-benchmarks-dotnet-10-vs-dotnet-11.htm
 [process-unix-release]: https://github.com/dotnet/runtime/blob/5a720bffcf31577eff28c81adb6f7b7788172ece/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Unix.cs#L111-L156

@@ -1,9 +1,5 @@
 # Transitive compatibility review — 2026-10-30
 
-> 2026-11-23: the pins moved from the RC3 builds to the released packages (DiaSymReader 3.0.0; DependencyModel
-> and ProtectedData 11.0.0). The review below was performed on RC3 and has not been rerun on the released
-> packages; the build and the test suite pass with them.
-
 The 0.8.0 review tested all six candidates retained by the [0.7.0 self-review](SELF-REVIEW.md).
 Five explicit transitive pins live in `Directory.Packages.props`, with
 `CentralPackageTransitivePinningEnabled`. Application Insights was initially retained
@@ -70,7 +66,8 @@ portable-PDB execution evidence. Matching interfaces and COM GUIDs are evidence
 about that boundary, not proof of every native reader implementation. The added
 `CoCreateInstance` fallback requires `UseComRegistry`; CodeCoverage passes options
 zero and does not request that changed branch. These decisions
-apply to RefTrace's pinned .NET 11 RC3/MSTest/NuGet graph.
+were made against RefTrace's .NET 11 RC3/MSTest/NuGet graph; they have not been
+rechecked since the pins moved to SDK 11.0.100 and the 11.0.0/3.0.0 packages.
 
 ## Sources
 
