@@ -69,6 +69,49 @@ zero and does not request that changed branch. These decisions
 were made against RefTrace's .NET 11 RC3/MSTest/NuGet graph; they have not been
 rechecked since the pins moved to SDK 11.0.100 and the 11.0.0/3.0.0 packages.
 
+> 2026-11-23: rechecked on the released packages and NuGet 8.0; see
+> [the recheck below](#recheck-on-the-released-packages--2026-11-23). The decisions above
+> keep their 2026-10-30 evidence.
+
+## Recheck on the released packages — 2026-11-23
+
+Rerun on SDK 11.0.100 with the graph of `77afe16` (NuGet.ProjectModel 8.0.0). Same five
+upgrade pins, same owners, same consumer checks. The collector in `tooling/reftrace_audit`
+downloaded each package again and matched its bytes with the NuGet catalog SHA-512, then
+compared declared signatures from `ref assembly --type '*'`. Owners and requested versions
+come from `ref assets tests/RefTrace.Tests/RefTrace.Tests.csproj --json`. The raw evidence
+is local and untracked under `artifacts/transitive-review-20261123/`; the results are
+recorded here so that this section does not depend on it.
+
+| Package and owner (requested) | Owner's version → pin | Declared signatures | Consumer check | Decision |
+| --- | --- | --- | --- | --- |
+| Microsoft.DiaSymReader; CodeCoverage 18.12.0 (`[2.2.10, )`) | 2.2.10 → 3.0.0 | None added or removed, as with RC3; RC3 → 3.0.0 also none. Public-key token `31bf3856ad364e35` and all 33 COM GUIDs unchanged (`GuidAttribute` scan, outside RefTrace) | Full suite with `--coverage` on macOS ARM64: 156 passed; Cobertura for all six production modules | **Keep 3.0.0** |
+| Microsoft.Extensions.DependencyModel; CodeCoverage 18.12.0 (`[10.0.10, )`) | 10.0.10 → 11.0.0 | None added or removed; RC3 → 11.0.0 none | Same coverage run | **Keep 11.0.0** |
+| Microsoft.TestPlatform.ObjectModel; MSTest.TestAdapter 4.5.2 (`[18.10.1, )`) | 18.10.1 → 18.11.0 | None added or removed | The adapter discovers and runs all 156 tests | **Keep 18.11.0** |
+| Newtonsoft.Json; NuGet.Packaging 8.0.0 (`[13.0.3, )`) | 13.0.3 → 14.0.1-beta2 | Nine added, none removed (unchanged package) | `DependencyCompatibilityTests` lock-file and runtime-graph round trips through NuGet 8.0.0's writers, including the new analyzer-asset writer | **Keep 14.0.1-beta2** |
+| System.Security.Cryptography.ProtectedData; NuGet.Configuration 8.0.0 (`[8.0.0, )`) | 8.0.0 → 11.0.0 | Six added span overloads, none removed; RC3 → 11.0.0 none | `NuGetEncryption_RoundTripsOnWindowsAndRejectsUnsupportedPlatforms`: platform rejection on macOS here; the DPAPI round trip runs only in the Windows CI job | **Keep 11.0.0** |
+
+What changed since 2026-10-30:
+
+- The three .NET packages are the release builds. Each nuspec records
+  `dotnet/dotnet@297acf930fb0f5c07fd4e51d78e521b4ad2e5d1f` instead of `5254d8bc`, and
+  their declared signatures equal those of the RC3 builds.
+- The NuGet owners moved from 7.9.0 to 8.0.0. Their `net10.0` dependency groups request
+  the same lower bounds as the 7.9.0 `net8.0` groups: Newtonsoft.Json 13.0.3 from
+  Packaging and ProtectedData 8.0.0 from Configuration. The pins still raise exactly those
+  two edges.
+- Application Insights and the MTP telemetry extension remain absent from the test graph;
+  the packaged `ref check` in CI enforces it.
+- NuGet now lists newer candidates for owners and pins: MSTest 4.5.3 and MTP 2.5.3
+  (published 2026-11-11) and TestPlatform.ObjectModel 18.12.0 (2026-11-11), which adds
+  `EqtHash.GuidFromStringXxHash128` and removes nothing. This recheck does not adopt them;
+  each needs its own review against its owner.
+
+Not rechecked: the isolated coverage comparison with its portable-PDB fixture, the
+adapter's 31 registered properties and the Application Insights probe. Their harnesses
+lived in the deleted `artifacts/transitive-review-20261029/`. The full-suite coverage run
+and CI's coverage on Linux, macOS and Windows are the consumer evidence for this recheck.
+
 ## Sources
 
 The RC3 DiaSymReader, DependencyModel and ProtectedData packages record
