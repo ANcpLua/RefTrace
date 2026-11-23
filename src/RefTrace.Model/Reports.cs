@@ -1,8 +1,10 @@
 namespace RefTrace.Core;
 
+// AnalyzerAssets is null when the restore did not record analyzer assets (NuGet 8.0, RestoreEnableAnalyzerAssets).
 public sealed record DependencyNode(
     string Id, string Version, string Kind, string? ProjectPath,
-    IReadOnlyList<string> CompileAssets, IReadOnlyList<string> RuntimeAssets);
+    IReadOnlyList<string> CompileAssets, IReadOnlyList<string> RuntimeAssets,
+    IReadOnlyList<string>? AnalyzerAssets = null);
 
 public sealed record DependencyEdge(string From, string To, string RequestedVersion);
 
@@ -10,7 +12,10 @@ public sealed record DependencyGraph(
     string SourcePath, string ProjectPath, string Target, string Framework,
     string? RuntimeIdentifier, string RootId,
     IReadOnlyList<DependencyNode> Nodes, IReadOnlyList<DependencyEdge> Edges,
-    IReadOnlyList<string> UnresolvedDeclarations);
+    IReadOnlyList<string> UnresolvedDeclarations)
+{
+    public bool AnalyzerAssetsRecorded { get; init; }
+}
 
 public sealed record DependencyTrace(string Dependency, bool Found, IReadOnlyList<DependencyNode> Path);
 public sealed record PolicyViolation(string Pattern, DependencyNode Dependency, IReadOnlyList<DependencyNode> Path);

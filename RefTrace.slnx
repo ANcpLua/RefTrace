@@ -8,6 +8,7 @@
     <Project Path="src/RefTrace.Runtime/RefTrace.Runtime.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/RefTrace.AnalyzerAssetsFixture/RefTrace.AnalyzerAssetsFixture.csproj" />
     <Project Path="tests/RefTrace.RuntimeFixture/RefTrace.RuntimeFixture.csproj" />
     <Project Path="tests/RefTrace.Tests/RefTrace.Tests.csproj" />
   </Folder>

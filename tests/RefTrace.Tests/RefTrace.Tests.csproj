@@ -5,5 +5,6 @@
   <ItemGroup>
     <ProjectReference Include="../../src/RefTrace.Cli/RefTrace.Cli.csproj" />
     <ProjectReference Include="../RefTrace.RuntimeFixture/RefTrace.RuntimeFixture.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../RefTrace.AnalyzerAssetsFixture/RefTrace.AnalyzerAssetsFixture.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 </Project>

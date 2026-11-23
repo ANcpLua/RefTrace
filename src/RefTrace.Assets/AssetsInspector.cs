@@ -39,6 +39,10 @@ public static class AssetsInspector
         };
         var edges = new List<DependencyEdge>();
         var unresolved = new List<string>();
+        // Restore records analyzer assets only when the project sets RestoreEnableAnalyzerAssets.
+        // Without it, an empty list would wrongly claim that a package has no analyzers.
+        var analyzersRecorded = file.PackageSpec?.RestoreMetadata?.RestoreEnableAnalyzerAssets == true
+            || selected.Libraries.Any(l => l.AnalyzerAssets.Count != 0);
         var libraries = file.Libraries.ToDictionary(l => Key(l.Name, l.Version.ToNormalizedString()), StringComparer.OrdinalIgnoreCase);
 
         foreach (var library in selected.Libraries.OrderBy(l => l.Name, StringComparer.OrdinalIgnoreCase))
@@ -51,7 +55,8 @@ public static class AssetsInspector
                 library.Name, library.Version.ToNormalizedString(), kind,
                 kind == "project" ? metadata?.MSBuildProject ?? metadata?.Path : null,
                 library.CompileTimeAssemblies.Select(a => a.Path).Order(StringComparer.Ordinal).ToArray(),
-                library.RuntimeAssemblies.Select(a => a.Path).Order(StringComparer.Ordinal).ToArray()));
+                library.RuntimeAssemblies.Select(a => a.Path).Order(StringComparer.Ordinal).ToArray(),
+                analyzersRecorded ? library.AnalyzerAssets.Select(a => a.Path).Order(StringComparer.Ordinal).ToArray() : null));
             foreach (var dependency in library.Dependencies)
                 edges.Add(new(library.Name, dependency.Id, dependency.VersionRange.ToNormalizedString()));
         }
@@ -86,7 +91,7 @@ public static class AssetsInspector
             string.IsNullOrEmpty(selected.RuntimeIdentifier) ? null : selected.RuntimeIdentifier,
             rootId, nodes.ToArray(), edges.OrderBy(e => e.From, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(e => e.To, StringComparer.OrdinalIgnoreCase).ToArray(),
-            unresolved.Order(StringComparer.OrdinalIgnoreCase).ToArray());
+            unresolved.Order(StringComparer.OrdinalIgnoreCase).ToArray()) { AnalyzerAssetsRecorded = analyzersRecorded };
     }
 
     private static bool MatchesTarget(LockFileTarget target, string selection)

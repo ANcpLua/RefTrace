@@ -39,7 +39,7 @@ public static partial class CliApplication
         root.Subcommands.Add(assets);
 
         var (packagesCommand, packagesFile, packagesTarget) = GraphCommand("packages", "List resolved packages.");
-        var includeAssets = new Option<bool>("--assets") { Description = "Include compile/runtime asset paths." };
+        var includeAssets = new Option<bool>("--assets") { Description = "Include compile, analyzer and runtime asset paths." };
         var packagePattern = new Option<string>("--package") { Description = "Filter package IDs by glob (case-insensitive)." };
         var directOnly = new Option<bool>("--direct") { Description = "Only list direct package dependencies." };
         packagesCommand.Options.Add(includeAssets);
@@ -49,17 +49,22 @@ public static partial class CliApplication
         {
             var graph = await ReadGraphAsync(parse.GetValue(packagesFile)!, parse.GetValue(packagesTarget), token).ConfigureAwait(false);
             var direct = graph.Edges.Where(e => e.From == graph.RootId).Select(e => e.To).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var assetPaths = parse.GetValue(includeAssets);
             var report = new PackageReport(graph.SourcePath, graph.Target,
                 graph.Nodes.Where(n => n.Kind == "package"
                     && (!parse.GetValue(directOnly) || direct.Contains(n.Id))
                     && (parse.GetValue(packagePattern) is not { } pattern || System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(pattern, n.Id, ignoreCase: true)))
                     .Select(n => new PackageItem(n.Id, n.Version, direct.Contains(n.Id),
-                        parse.GetValue(includeAssets) ? n.CompileAssets : null, parse.GetValue(includeAssets) ? n.RuntimeAssets : null)).ToArray(),
-                graph.Nodes.Where(n => n.Kind == "unresolved").Select(n => n.Id).ToArray());
-            return (report, 0, string.Join(Environment.NewLine, report.Packages.SelectMany(p =>
+                        assetPaths ? n.CompileAssets : null, assetPaths ? n.RuntimeAssets : null,
+                        assetPaths ? n.AnalyzerAssets : null)).ToArray(),
+                graph.Nodes.Where(n => n.Kind == "unresolved").Select(n => n.Id).ToArray(), graph.AnalyzerAssetsRecorded);
+            IEnumerable<string> lines = report.Packages.SelectMany(p =>
                 new[] { $"{p.Id}/{p.Version} ({(p.Direct ? "direct" : "transitive")})" }
                     .Concat((p.CompileAssets ?? []).Select(a => "  compile: " + a))
-                    .Concat((p.RuntimeAssets ?? []).Select(a => "  runtime: " + a)))));
+                    .Concat((p.AnalyzerAssets ?? []).Select(a => "  analyzer: " + a))
+                    .Concat((p.RuntimeAssets ?? []).Select(a => "  runtime: " + a)));
+            if (assetPaths && !report.AnalyzerAssetsRecorded) lines = lines.Append(AnalyzerAssetsNotRecorded);
+            return (report, 0, string.Join(Environment.NewLine, lines));
         }, output, error, parse.GetValue(plain)));
         root.Subcommands.Add(packagesCommand);
 
@@ -240,6 +245,9 @@ public static partial class CliApplication
             EnableDefaultExceptionHandler = false
         }, cancellationToken).ConfigureAwait(false);
     }
+
+    internal const string AnalyzerAssetsNotRecorded =
+        "Analyzer assets: not recorded. The restore did not set RestoreEnableAnalyzerAssets.";
 
     private static (Command Command, Argument<string> File, Option<string> Target) GraphCommand(string name, string description, Argument? leading = null)
     {

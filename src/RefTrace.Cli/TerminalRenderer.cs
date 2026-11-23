@@ -44,10 +44,13 @@ internal static class TerminalRenderer
                 {
                     var assets = new Tree(Text(package.Id));
                     foreach (var asset in package.CompileAssets!) assets.AddNode(Text("compile: " + asset));
+                    foreach (var asset in package.AnalyzerAssets ?? []) assets.AddNode(Text("analyzer: " + asset));
                     foreach (var asset in package.RuntimeAssets ?? []) assets.AddNode(Text("runtime: " + asset));
                     console.Write(assets);
                 }
                 console.MarkupLine($"[dim]{packages.Packages.Count} resolved packages · exact selected target[/]");
+                if (packages.Packages.Any(p => p.CompileAssets is not null) && !packages.AnalyzerAssetsRecorded)
+                    Note(console, CliApplication.AnalyzerAssetsNotRecorded);
                 if (packages.UnresolvedDependencies.Count != 0)
                     Note(console, "Unresolved constraints: " + string.Join(", ", packages.UnresolvedDependencies));
                 break;

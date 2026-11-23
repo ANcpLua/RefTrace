@@ -31,6 +31,17 @@ public sealed class DependencyCompatibilityTests(TestContext context)
     }
 
     [TestMethod]
+    public void NuGetLockFile_RoundTripPreservesAnalyzerAssets()
+    {
+        var format = new LockFileFormat();
+        var rendered = format.Render(format.Parse(Fixtures.WithAnalyzerAssets(), "/fixture/project.assets.json"));
+        var graph = Fixtures.Read(rendered);
+
+        Assert.IsTrue(graph.AnalyzerAssetsRecorded);
+        Assert.HasCount(2, graph.Nodes.Single(node => node.Id == "Alpha").AnalyzerAssets!);
+    }
+
+    [TestMethod]
     public void NuGetRuntimeGraph_RoundTripPreservesImportsConstraintsAndSupport()
     {
         const string input = """

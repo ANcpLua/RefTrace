@@ -41,7 +41,8 @@ project keeps its assets; it does not restore or build it. Ambiguous selections 
 the available choices. Use `--framework net11.0` for a specific restored target.
 
 Package output shows IDs, versions, and direct/transitive origin. Use `--package
-'NuGet.*'` to filter it and `--assets` to include compile/runtime paths.
+'NuGet.*'` to filter it and `--assets` to include compile, analyzer and runtime paths.
+Analyzer paths appear when the project sets `RestoreEnableAnalyzerAssets` (NuGet 8.0, SDK 11.0.100).
 
 Use `assets` for the full graph, including project references. To check a project boundary,
 use `--forbid-project '*Other.Tests.csproj'`. Quote patterns so your shell passes them through.

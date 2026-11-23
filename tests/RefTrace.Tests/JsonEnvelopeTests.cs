@@ -17,7 +17,7 @@ public sealed class JsonEnvelopeTests
     public void PackageEnvelope_IsCompactAndOmitsUnrequestedAssets(int count)
     {
         var report = new PackageReport("/path/quoted \"and\" café.assets.json", "net11.0",
-            Enumerable.Range(0, count).Select(index => new PackageItem($"Package.{index}", "1.0.0", index == 0)).ToArray(), []);
+            Enumerable.Range(0, count).Select(index => new PackageItem($"Package.{index}", "1.0.0", index == 0)).ToArray(), [], false);
         var info = RefTraceJsonContext.Default.Options.GetTypeInfo<ReportEnvelope<PackageReport>>();
         var actual = JsonSerializer.Serialize(new ReportEnvelope<PackageReport>(2, "packages", report), info);
 
@@ -31,6 +31,7 @@ public sealed class JsonEnvelopeTests
         Assert.AreEqual(report.SourcePath, data.GetProperty("sourcePath").GetString());
         Assert.IsFalse(data.GetProperty("packages")[0].TryGetProperty("compileAssets", out _));
         Assert.IsFalse(data.GetProperty("packages")[0].TryGetProperty("runtimeAssets", out _));
+        Assert.IsFalse(data.GetProperty("packages")[0].TryGetProperty("analyzerAssets", out _));
     }
 
     [TestMethod]

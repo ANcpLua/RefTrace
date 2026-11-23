@@ -68,7 +68,8 @@ listed .NET project returns `file-not-found` with its resolved path. An empty so
 or one with no .NET projects returns `project-not-found`. Solutions are never read as
 assets JSON, and XML DTDs are not accepted.
 
-`packages` omits asset arrays by default. `--assets` includes them, `--direct` restricts
+`packages` omits asset arrays by default. `--assets` includes compile, analyzer and runtime
+paths, `--direct` restricts
 the result to direct dependencies, and `--package` filters IDs by a case-insensitive glob.
 JSON and plain output retain full values. A filter with no matches produces an empty list.
 See [package reviews](PACKAGE-AUDIT.md) for `review` and its saved evidence contract.
@@ -114,6 +115,15 @@ does not establish AOT compatibility.
   Nodes preserve resolved versions and selected compile/runtime assets; edges preserve
   requested version constraints. Graphs are scoped to one restored target. The file is a
   snapshot of a restore: RefTrace does not prove that it matches today's project files.
+* **Analyzer assets:** NuGet 8.0 (SDK 11.0.100) records a package's analyzer assets in
+  each target only when the project sets `RestoreEnableAnalyzerAssets` to `true`. RefTrace
+  then lists them per node (`analyzerAssets`) and sets `analyzerAssetsRecorded`. Without the
+  property the field is absent and `--assets` says the assets were not recorded; an empty
+  list would wrongly claim that a package has no analyzers. Restore records every
+  `analyzers/dotnet/roslyn*/` folder of the project's language (Meziantou.Analyzer 3.0.317:
+  `roslyn4.8` through `roslyn5.9`). Which folder the compiler loads is decided later by the
+  SDK build and is not in the assets file. SDK 11.0.100 recorded them for a `net10.0` target
+  as well when the project multi-targeted `net10.0;net11.0`.
 * **Missing nodes:** NuGet may retain a dependency constraint for a library excluded from
   a consuming project's target. Such nodes are marked `unresolved`, never silently presented
   as resolved packages. A policy matching one is inconclusive (exit 2). Unmatched unresolved
