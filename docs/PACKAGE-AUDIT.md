@@ -20,8 +20,13 @@ Python packages. Only configured decompilation probes need **ilspycmd** on PATH.
 are no third-party Python dependencies. The source checkout uses `uv.lock` for its test
 environment. `make audit` and `make audit-catalog` build and run the same command locally.
 
-Each run writes a new directory under the input's `artifacts/package-audit/`, or the new
-folder supplied with `--output`. `inputs.json` records project paths, evaluated assets
+Each run writes a new directory under the input's `artifacts/.package-audit/`, or the new
+folder supplied with `--output`. The evidence contains unpacked packages, decompiled types and
+upstream source files. The .NET SDK leaves folders whose name starts with a dot out of a
+project's default items; anywhere else below a project directory, it would compile these `.cs`
+files into that project on its next build. Keep an `--output` folder outside project
+directories, or give it a name that starts with a dot. Downloads are cached in
+`artifacts/package-audit-cache/`. `inputs.json` records project paths, evaluated assets
 paths and SDK versions. `report.json` (saved-report schema 2) records origins, current and
 candidate versions, listing status, tools, timestamps, checksums and evidence paths.
 The command's JSON summary uses the CLI schema-2 envelope and links to this report.

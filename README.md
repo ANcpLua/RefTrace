@@ -34,6 +34,7 @@ dotnet tool install RefTrace
 | What does the whole graph look like, project references included? | `ref assets [input]` | the same assets file |
 | Does the graph contain something it must not contain? | `ref check [input] --forbid-package 'glob' --forbid-project 'glob'` | the graph; exit 1 when a forbidden dependency is found |
 | Are newer package versions listed, and what changes with them? | `ref review [input] [--catalog-only] [--refresh] [--offline] [--package 'glob']` | NuGet release metadata, package bytes, declared API signatures |
+| Which of a package's versions is the newest stable one, the newest prerelease, and the one to move to? | `ref versions <index.json> --current <version>` | a saved NuGet flat-container index, in NuGet's version order |
 | What does this DLL contain, and what is the exact signature of this type? | `ref assembly <file> [--type 'Namespace.Type']` | metadata; the DLL is not loaded |
 | Does this DLL call reflection or dynamic code? | `ref reflection <file> [--fail-on-findings]` | method references in IL |
 | What points for or against Native AOT, and does a publish succeed? | `ref aot inspect <file>` and `ref aot publish <project> --rid <rid> --output <dir>` | declarations and annotations; a real publish |
@@ -62,7 +63,7 @@ apply the failing `input` and the valid `candidates` to choose from. The
 | Exit code | Meaning |
 | --- | --- |
 | `0` | The inspection completed, the dependency path exists, or the policy passed |
-| `1` | A forbidden dependency was found, no path leads to the requested dependency, a publish failed, or a package review has incomplete evidence |
+| `1` | A forbidden dependency was found, no path leads to the requested dependency, `reflection --fail-on-findings` found a call, a publish failed, or a package review has incomplete evidence |
 | `2` | RefTrace could not complete the request or reach a reliable conclusion |
 
 Treat exit code 2 as "no answer", never as a pass. For `runtime`, exit code 0 also requires a complete observation;
@@ -120,8 +121,9 @@ ref review MyApp.csproj --offline --json
 
 `review` accepts one project, a `.slnx` solution or a repository with several projects. `--catalog-only` compares
 the resolved versions with the listed NuGet releases. Without it, the review also collects package bytes, declared
-API signatures and configured source probes, and saves a report under `artifacts/package-audit/`. It reports
-candidates and leaves your version pins as they are. `review` needs uv and Python 3.14 on the machine, plus
+API signatures and configured source probes. Every review saves its report in a new folder under
+`artifacts/.package-audit/` next to the input and prints the path. It reports candidates and leaves your version
+pins as they are. `review` needs uv and Python 3.14 on the machine, plus
 `ilspycmd` for configured decompilation probes; see
 [package reviews](https://github.com/ANcpLua/RefTrace/blob/main/docs/PACKAGE-AUDIT.md).
 

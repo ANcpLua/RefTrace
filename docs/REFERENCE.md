@@ -28,6 +28,7 @@ ref sdk path/to/App.csproj
 ref review . --catalog-only
 ref review path/to/App.csproj --refresh --package 'NuGet.*'
 ref review path/to/App.slnx --catalog-only --refresh
+ref versions path/to/index.json --current 1.2.3
 ref processes
 ref runtime --pid 12345 --seconds 1 --timeout 30 --modules
 ref reflection path/to/library.dll --json
@@ -55,7 +56,10 @@ build outputs, version-control folders and symlinked
 subdirectories. Multiple projects produce `ambiguous-project` with candidate paths;
 `review` intentionally includes all discovered projects. MSBuild's evaluated
 `ProjectAssetsFile` is honored, and its recorded project identity must match the input.
-Missing or mismatched restore evidence requires the caller to restore the project.
+Missing or mismatched restore evidence requires the caller to restore the project. A
+multi-targeted project gets `ProjectAssetsFile` only from the props file that restore writes;
+before its first restore RefTrace names `project.assets.json` in `MSBuildProjectExtensionsPath`
+and returns `restore-required`.
 
 Explicit `.slnx` input selects only listed `.csproj`, `.fsproj` and `.vbproj` entries;
 it does not scan the solution's directory. `review` evaluates all selected projects,
@@ -107,7 +111,7 @@ Exit codes:
 | Code | Meaning |
 | --- | --- |
 | 0 | Successful inspection, dependency path found, or policy passed |
-| 1 | Forbidden dependency found, or no path to the requested dependency |
+| 1 | Forbidden dependency found, no path to the requested dependency, or reflection findings with `--fail-on-findings` |
 | 2 | Invalid input, unsupported artifact, failed restore, ambiguous target, or inconclusive policy |
 
 For `runtime`, exit 0 additionally requires completed CLR rundown with no reported lost
@@ -279,8 +283,10 @@ See [ARCHITECTURE.md](../ARCHITECTURE.md) for dependency and evidence boundaries
 
 The published tool currently runs on CoreCLR. Native AOT tool packaging is supported by
 .NET SDK 10 and later, but that does not make every tool dependency AOT-compatible.
-An `osx-arm64` Native AOT publish audit of the current tool reported trimming/AOT errors
-in TraceEvent and Newtonsoft.Json. Those errors are not suppressed and `PublishAot` is
+An `osx-arm64` Native AOT publish audit of the tool reported trimming/AOT errors
+in TraceEvent and Newtonsoft.Json. On SDK 11.0.100, `ref aot publish` of the CLI project
+stops earlier, with IL3000 for the two `Assembly.Location` reads in `ReviewCommand.cs` that
+find the bundled review collector. None of these errors is suppressed, and `PublishAot` is
 not enabled for the shipped package. The CLI's own JSON output uses source generation.
 
 The isolated Model and Metadata modules enable AOT compatibility analysis. A metadata-only

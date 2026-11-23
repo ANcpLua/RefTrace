@@ -55,16 +55,24 @@ public static class ProjectInputs
         project = Path.GetFullPath(project);
         var directory = Path.GetDirectoryName(project)!;
         var evaluation = await ProcessCapture.RunAsync("dotnet",
-            ["msbuild", project, "-nologo", "-verbosity:quiet", "-getProperty:ProjectAssetsFile,NETCoreSdkVersion"],
+            ["msbuild", project, "-nologo", "-verbosity:quiet", "-getProperty:ProjectAssetsFile,MSBuildProjectExtensionsPath,NETCoreSdkVersion"],
             directory, TimeSpan.FromSeconds(60), cancellationToken).ConfigureAwait(false);
         if (evaluation.ExitCode != 0)
             throw new InspectionException("evaluation-failed", evaluation.Error.Trim() + evaluation.Output.Trim(), project);
         using var document = JsonDocument.Parse(evaluation.Output);
-        if (!document.RootElement.TryGetProperty("Properties", out var properties)
-            || !properties.TryGetProperty("ProjectAssetsFile", out var assetsProperty)
-            || string.IsNullOrWhiteSpace(assetsProperty.GetString()))
+        if (!document.RootElement.TryGetProperty("Properties", out var properties))
             throw new InspectionException("evaluation-failed", "MSBuild did not identify a restore assets file.", project);
-        var assets = Path.GetFullPath(assetsProperty.GetString()!, directory);
+        var recordedAssets = properties.TryGetProperty("ProjectAssetsFile", out var assetsProperty) ? assetsProperty.GetString() : null;
+        if (string.IsNullOrWhiteSpace(recordedAssets))
+        {
+            // The outer evaluation of a multi-targeted project gets ProjectAssetsFile only from the props file that
+            // restore generates. Before the first restore it is empty; restore writes the file to this directory.
+            var extensions = properties.TryGetProperty("MSBuildProjectExtensionsPath", out var extensionsProperty) ? extensionsProperty.GetString() : null;
+            if (string.IsNullOrWhiteSpace(extensions))
+                throw new InspectionException("evaluation-failed", "MSBuild did not identify a restore assets file.", project);
+            recordedAssets = Path.Combine(extensions, "project.assets.json");
+        }
+        var assets = Path.GetFullPath(recordedAssets, directory);
         if (!File.Exists(assets)) throw new InspectionException("restore-required", "Restore this project before inspecting its dependencies.", assets);
         var stream = File.OpenRead(assets);
         await using var streamLifetime = stream.ConfigureAwait(false);

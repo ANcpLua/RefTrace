@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using RefTrace.Build;
+using RefTrace.Cli;
 
 namespace RefTrace.Tests;
 
@@ -116,6 +118,29 @@ public sealed class CliInputTests(TestContext context)
         Assert.AreEqual("restore-required", data.GetProperty("code").GetString());
         Assert.AreEqual(assets, data.GetProperty("input").GetString());
         Assert.IsFalse(Directory.Exists(output));
+    }
+
+    [TestMethod]
+    public async Task Review_DefaultEvidenceFolderStaysOutOfTheProjectsCompileItems()
+    {
+        var root = context.TestTempDirectory!;
+        var project = Path.Combine(root, "App.csproj");
+        await File.WriteAllTextAsync(Path.Combine(root, "Directory.Build.props"), "<Project/>", context.CancellationToken);
+        await File.WriteAllTextAsync(project,
+            "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net11.0</TargetFramework></PropertyGroup></Project>", context.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(root, "Program.cs"), "", context.CancellationToken);
+        var evidence = Directory.CreateDirectory(Path.Combine(CliApplication.DefaultReviewFolder(root), "Example.Package", "1.0.0"));
+        await File.WriteAllTextAsync(Path.Combine(evidence.FullName, "Example.Decompiled.cs"), "class Duplicate;", context.CancellationToken);
+
+        var evaluation = await ProcessCapture.RunAsync("dotnet", ["msbuild", project, "-nologo", "-verbosity:quiet", "-getItem:Compile"],
+            root, TimeSpan.FromSeconds(60), context.CancellationToken);
+
+        Assert.AreEqual(0, evaluation.ExitCode, evaluation.Error + evaluation.Output);
+        using var json = JsonDocument.Parse(evaluation.Output);
+        var compiled = json.RootElement.GetProperty("Items").GetProperty("Compile").EnumerateArray()
+            .Select(item => item.GetProperty("Identity").GetString()).ToArray();
+        CollectionAssert.AreEqual(new[] { "Program.cs" }, compiled);
+        StringAssert.StartsWith(evidence.FullName, Path.Combine(root, "artifacts") + Path.DirectorySeparatorChar);
     }
 
     [TestMethod]

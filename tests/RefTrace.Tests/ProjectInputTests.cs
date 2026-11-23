@@ -54,6 +54,32 @@ public sealed class ProjectInputTests(TestContext context)
     }
 
     [TestMethod]
+    public async Task Resolve_MultiTargetedProjectWithoutRestoreNamesTheDefaultAssetsFile()
+    {
+        // Only the props file that restore generates gives the outer evaluation of a multi-targeted project
+        // its ProjectAssetsFile, so before the first restore the property is empty.
+        await File.WriteAllTextAsync(Path.Combine(Root, "Directory.Build.props"), "<Project/>", context.CancellationToken);
+        var project = Path.Combine(Root, "Multi.csproj");
+        await File.WriteAllTextAsync(project,
+            "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFrameworks>net10.0;net11.0</TargetFrameworks></PropertyGroup></Project>", context.CancellationToken);
+        var assets = Path.Combine(Root, "obj", "project.assets.json");
+
+        var missing = await Assert.ThrowsExactlyAsync<InspectionException>(() => ProjectInputs.ResolveAsync(project, context.CancellationToken));
+
+        Assert.AreEqual("restore-required", missing.Code);
+        Assert.AreEqual(assets, missing.Input);
+        Assert.IsFalse(Directory.Exists(Path.Combine(Root, "obj")));
+
+        Directory.CreateDirectory(Path.GetDirectoryName(assets)!);
+        await File.WriteAllTextAsync(assets, Fixtures.Modify(root => root["project"] = new JsonObject
+        {
+            ["restore"] = new JsonObject { ["projectPath"] = Path.Combine(Root, "Other.csproj") }
+        }), context.CancellationToken);
+        var foreign = await Assert.ThrowsExactlyAsync<InspectionException>(() => ProjectInputs.ResolveAsync(project, context.CancellationToken));
+        Assert.AreEqual("mismatched-assets", foreign.Code);
+    }
+
+    [TestMethod]
     public async Task Resolve_DirectoryAmbiguityListsProjectsAndIgnoresBuildArtifacts()
     {
         var first = Project("A").Project;

@@ -19,7 +19,7 @@ public static partial class CliApplication
     {
         var command = new Command("review", "Review restored packages, newer versions, source and API evidence.");
         var input = new Argument<string>("input") { Arity = ArgumentArity.ZeroOrOne, DefaultValueFactory = _ => ".", Description = "Project, .slnx solution, or repository directory (default: current directory)." };
-        var folder = new Option<string>("--output") { Description = "New evidence directory; defaults under the input's artifacts/package-audit/." };
+        var folder = new Option<string>("--output") { Description = "New evidence directory; defaults under the input's artifacts/.package-audit/." };
         var catalog = new Option<bool>("--catalog-only") { Description = "Compare listed versions without downloading package/source/DLL evidence." };
         var offline = new Option<bool>("--offline") { Description = "Use saved evidence only; fail for missing cache entries." };
         var refresh = new Option<bool>("--refresh") { Description = "Refresh remote release metadata." };
@@ -57,7 +57,7 @@ public static partial class CliApplication
         var inputs = new List<ProjectInput>();
         foreach (var project in projects)
             inputs.Add(await ProjectInputs.EvaluateAsync(project, token).ConfigureAwait(false));
-        var folder = output is null ? Path.Combine(root, "artifacts", "package-audit", "review-" + Guid.NewGuid().ToString("N")) : Path.GetFullPath(output);
+        var folder = output is null ? DefaultReviewFolder(root) : Path.GetFullPath(output);
         if (Directory.Exists(folder) || File.Exists(folder))
             throw new InspectionException("output-exists", "Choose a new evidence directory for this review.", folder);
         var publishAge = PublishAgePolicy.Load(root);
@@ -84,6 +84,12 @@ public static partial class CliApplication
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: token).ConfigureAwait(false);
         return Summarize(root, reportPath, folder, document.RootElement, publishAge);
     }
+
+    // Evidence holds unpacked packages, decompiled types and upstream source files. The .NET SDK leaves folders
+    // whose name starts with a dot out of a project's default items; in any other folder below a project,
+    // these .cs files would be compiled into it on its next build.
+    internal static string DefaultReviewFolder(string root) =>
+        Path.Combine(root, "artifacts", ".package-audit", "review-" + Guid.NewGuid().ToString("N"));
 
     internal static ReviewReport Summarize(string root, string reportPath, string folder, JsonElement report, PublishAgePolicy publishAge)
     {

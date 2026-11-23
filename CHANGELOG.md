@@ -18,6 +18,11 @@
   (`extension(...)` prefix) and members that require an unsafe context (`unsafe`); compare API reports made
   by the same RefTrace version.
 * Name the declared method for reflection calls inside async and iterator state machines.
+* Save review evidence under `artifacts/.package-audit/` instead of `artifacts/package-audit/`. The decompiled and
+  upstream `.cs` files of the old folder became part of a project in the same directory and broke its next build;
+  the .NET SDK leaves folders whose name starts with a dot out of a project's default items. Delete an old
+  `artifacts/package-audit/` folder that lies below a project.
+* Return `restore-required` for a multi-targeted project that was never restored; it was `evaluation-failed`.
 * Compile RefTrace with C# 15 runtime async.
 * Stop `global.json` from selecting prerelease SDKs.
 * Run the AOT publish tree-kill test in parallel again; .NET 11.0.0 fixes the RC3 macOS reaping stall.
