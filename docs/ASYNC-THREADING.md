@@ -1,6 +1,6 @@
 # .NET async and threading: verified reference and modernization goal
 
-Last reviewed: **2026-11-10**. Scope: the APIs and patterns in the originally supplied
+Last reviewed: **2026-11-23**. Scope: the APIs and patterns in the originally supplied
 `dotnet11_async_bestinslot_reference.md`, plus their direct replacements in RefTrace.
 That original is not in the repository; a copy exists only as a local, git-ignored
 artifact at `artifacts/async-reference-20261029/original-reference.md`. This revision
@@ -9,9 +9,15 @@ same file name, into the 2026-10-29 guide and rechecks the merged statements aga
 the installed RC3 SDK. Unchanged rows date from 2026-10-29; the RefTrace validation
 record keeps its own date and was not rerun.
 .NET 11.0.0 (SDK 11.0.100) was released on 2026-11-10 ([release notes][release-ga]),
-and this checkout's `global.json` now selects SDK 11.0.100. This document still
-describes RC3: its rows have not been rechecked against the GA SDK, and every row must
-be rechecked before it is relied on for GA.
+and this checkout's `global.json` selects SDK 11.0.100. On 2026-11-23 the version
+baseline was re-observed from the installed SDK, and every checklist row and correction
+that cites runtime source was rechecked against the `v11.0.0` runtime source (see the
+version baseline for the method); A42 was also recompiled on SDK 11.0.100. Rows A22, A42
+and A44 changed their wording; the other rows' guidance holds unchanged on 11.0.0, and
+their links now name the `v11.0.0` revision. A38, A41 and the corrections that cite only
+Microsoft Learn guidance or the article series make no version-specific claim and keep
+their 2026-10-29 review. The analyzer policy, the examples and the RefTrace validation
+record keep their own dates.
 This is a decision guide and a repeatable modernization task, not a claim that one
 primitive is fastest for every workload or an inventory of the entire .NET API.
 
@@ -100,26 +106,27 @@ new releases and source changes again; the document does not monitor them itself
 
 | Evidence | Observed value | Meaning |
 | --- | --- | --- |
-| Repository `global.json` and `dotnet --version` | `11.0.100-rc.3.26522.148`, roll-forward disabled | Selected build SDK |
-| Official .NET 11 release feed | SDK `11.0.100-rc.3.26522.148`; runtime `11.0.0-rc.3.26522.148`; release date `2026-10-25` | Latest published .NET 11 channel entry when checked on 2026-10-29 and 2026-11-02, not a permanent pin recommendation |
-| Installed CoreCLR and ASP.NET Core shared framework | `11.0.0-rc.3.26522.148` | Available local runtime |
-| Selected Roslyn compiler | `5.12.0-1.26522.148` | Actual compiler, rather than an inference from C# syntax |
-| Installed `.version` revision | `5254d8bcf59917edc1e1abc33bdf2442b77b1c70` | Unified `dotnet/dotnet` source revision, **not** a `dotnet/runtime` commit |
-| Unified source manifest's runtime revision and RC3 runtime tag | `474ed963699fc29809015392738a15231aaae2de` | Version-matched runtime source used below |
-| Runtime `release/11.0` snapshot, recorded 2026-11-02 | `5a720bffcf31577eff28c81adb6f7b7788172ece` | Branch changes are not automatically in installed RC3 |
-| Runtime `main` snapshot, recorded 2026-11-02 | `76198de2dac7d89c9ab50d929674b4be6bfa5a6d` | Freshness comparison, not release evidence |
-| Repository MSTest SDK | `4.5.2` | Current `global.json` declaration. The 2026-10-29 self-review found it newest listed and verified its NuGet package bytes and source revision; the initial validation recorded below used `4.5.1` |
-| Meziantou.Analyzer declared by RefTrace | `3.0.317`; source `0d0970fc06d68bc46210667b0eb0ee23c441e762` | `GlobalPackageReference` in `Directory.Packages.props`; latest listed when selected on 2026-10-29 and verified through NuGet registration/catalog |
-| Newer Meziantou.Analyzer named by the 2026-11-02 reference | `3.0.320`; source `2a42a781bc8fb3c507f63c4bcfbf9719619337b2` | Published 2026-11-01; not adopted by RefTrace. NuGet also listed `3.0.321` and `3.0.322` by 2026-11-10; no review covers those |
-| Meziantou.Analyzer.Annotations | `1.8.0` | Separate optional package, still the newest listed on 2026-11-10; not required below |
+Observed on 2026-11-23 on macOS ARM64 unless a row names another date.
 
-The baseline above was recorded against RC3. Since 2026-11-10 the official release feed
-lists SDK `11.0.100` and runtime `11.0.0` (release date `2026-11-10`) as the latest
-.NET 11 entry, and the repository `global.json` pins `11.0.100`; the remaining rows
-have not been re-observed on that SDK.
+| Evidence | Observed value | Meaning |
+| --- | --- | --- |
+| Repository `global.json` and `dotnet --version` | `11.0.100`, roll-forward disabled, prereleases not allowed | Selected build SDK |
+| Official .NET 11 release feed | SDK `11.0.100`; runtime `11.0.0`; release date `2026-11-10`; support phase `active`, release type `sts` | Latest published .NET 11 entry when checked on 2026-11-23, not a permanent pin recommendation |
+| Installed CoreCLR and ASP.NET Core shared framework | `11.0.0` | Available local runtime; its `System.Diagnostics.Process.dll` reports informational version `11.0.0+297acf930fb0f5c07fd4e51d78e521b4ad2e5d1f` |
+| Selected Roslyn compiler | `5.12.0-1.26529.118+297acf930fb0f5c07fd4e51d78e521b4ad2e5d1f` (`ref sdk`) | Actual compiler, rather than an inference from C# syntax. RefTrace references no Roslyn package; it only reads this version |
+| Installed `.version` | revision `297acf930fb0f5c07fd4e51d78e521b4ad2e5d1f`, build `11.0.100-rtm.26529.118` | Unified `dotnet/dotnet` source revision, **not** a `dotnet/runtime` commit |
+| Unified source manifest's runtime revision and the `v11.0.0` tag | `deae2e32bf0e018e09d64597b7c59b62b73bb3ce` | Version-matched runtime source used below |
+| Previous baseline, RC3 (2026-10-29 to 2026-11-10) | SDK `11.0.100-rc.3.26522.148`, Roslyn `5.12.0-1.26522.148`, `.version` `5254d8bcf59917edc1e1abc33bdf2442b77b1c70`, runtime `474ed963699fc29809015392738a15231aaae2de` | Source the rows were checked against before this recheck |
+| Runtime `release/11.0` snapshot, recorded 2026-11-02 | `5a720bffcf31577eff28c81adb6f7b7788172ece` | Every path compared below has the same blob ID at `v11.0.0` |
+| Runtime `main` snapshot, recorded 2026-11-02 | `76198de2dac7d89c9ab50d929674b4be6bfa5a6d` | Freshness comparison, not release evidence; not rechecked on 2026-11-23 |
+| Repository MSTest SDK | `4.5.2` | Current `global.json` declaration. The 2026-10-29 self-review found it newest listed and verified its NuGet package bytes and source revision; the initial validation recorded below used `4.5.1`. NuGet has listed `4.5.3` since 2026-11-11; not adopted |
+| Meziantou.Analyzer declared by RefTrace | `3.0.317`; source `0d0970fc06d68bc46210667b0eb0ee23c441e762` | `GlobalPackageReference` in `Directory.Packages.props`; latest listed when selected on 2026-10-29 and verified through NuGet registration/catalog. On 2026-11-23 NuGet lists up to `3.0.342` (published 2026-11-22); not adopted |
+| Newer Meziantou.Analyzer named by the 2026-11-02 reference | `3.0.320`; source `2a42a781bc8fb3c507f63c4bcfbf9719619337b2` | Published 2026-11-01; not adopted by RefTrace. No review covers the later versions |
+| Meziantou.Analyzer.Annotations | `1.8.0` | Separate optional package, still the newest listed on 2026-11-23; not required below |
 
-Sources: [official release feed][releases], [unified source manifest][manifest],
-[RC3 tag][runtime-tag], [newer analyzer package][analyzer-package-320].
+Sources: [official release feed][releases], [GA source manifest][manifest-ga],
+[`v11.0.0` tag][runtime-tag-ga], [RC3 source manifest][manifest], [RC3 tag][runtime-tag],
+[newer analyzer package][analyzer-package-320].
 Raw source receipts and local verification for the 2026-10-29 revision are under
 `artifacts/async-reference-20261029/`. Artifacts are intentionally untracked.
 Analyzer package/source receipts and compiler-input checks are under
@@ -139,6 +146,12 @@ match the unified RC3 source. 22 also match the recorded `release/11.0` snapshot
 20 match `main`. On `release/11.0`, `Task.cs` and `SemaphoreSlim.cs` differ only in
 synchronous waits on runtimes without multithreading; `main` also differs in `Lock.cs`
 and `ThreadPoolWorkQueue.cs`. `Process.Unix.cs` differs in process-tree kill order.
+On 2026-11-23 the same 25 paths, and `ProcessWaitState.Unix.cs`, were compared by blob ID
+with the `v11.0.0` tag. All 26 match the recorded `release/11.0` snapshot. 21 of the 25
+linked paths match RC3; `Task.cs`, `SemaphoreSlim.cs` and `Process.Unix.cs` differ, as does
+`ProcessWaitState.Unix.cs`. The `Task.cs` and `SemaphoreSlim.cs` differences are the
+synchronous-wait changes for runtimes without multithreading named above; no checklist row
+depends on them.
 That file is compiled for every Unix target, so installed RC3 stops the whole tree and
 then kills it in pre-order, root first, on Linux as on macOS; the installed osx-arm64
 `System.Diagnostics.Process.dll` matches that source. The `release/11.0` snapshot
@@ -163,7 +176,11 @@ installed SDK 11.0.100 (`dotnet/dotnet` revision `297acf930fb0f5c07fd4e51d78e521
 names runtime revision `deae2e32bf0e018e09d64597b7c59b62b73bb3ce`, the `v11.0.0` tag,
 and that revision's `Process.Unix.cs` and `ProcessWaitState.Unix.cs` have the same Git
 blob IDs as the recorded `release/11.0` snapshot (checked 2026-11-22). The installed GA
-binary was not decompiled.
+binary was not decompiled. On 2026-11-23 ilspycmd 11.2.0.10050 decompiled the installed
+osx-arm64 `System.Diagnostics.Process.dll` (`11.0.0+297acf93…`): `KillTree` walks the
+stopped processes from the end of the list, so descendants die before their ancestors, and
+`ProcessWaitState.CheckChildren` falls back to scanning all managed children when a reported
+child cannot be reaped.
 [GA source manifest][manifest-ga], [GA implementation][process-unix-ga]
 
 For RefTrace, `src/RefTrace.Build/ProcessCapture.cs` and
@@ -249,7 +266,7 @@ included where stated. Custom sample names are not framework APIs.
 | A19 | `ConfigureAwait(bool)` on Task/ValueTask/enumerable/disposable | Choose based on whether continuation needs the captured context; false does not suppress ExecutionContext or guarantee a different thread. [Enumerable source][configured-enumerable], [context source][execution-context] |
 | A20 | `Channel.CreateBounded<T>`, `BoundedChannelOptions`, `FullMode.Wait` | Producer/consumer coordination with capacity and backpressure; capacity bounds queued items, not all producer state. [Factory][channel], [implementation][bounded-channel] |
 | A21 | `ChannelWriter<T>.WriteAsync`, `TryComplete`; `ChannelReader<T>.ReadAllAsync` | Await writes; finish the writer; propagate producer failures and define drain versus discard on shutdown. [Writer][channel-writer], [reader][channel-reader] |
-| A22 | `SingleReader`, `SingleWriter`, `AllowSynchronousContinuations` | Set only promises the application actually satisfies. The RC3 bounded factory ignores the single-reader/writer hints, so no speedup follows from those hints. Synchronous continuations change reentrancy. [Factory][channel], [implementation][bounded-channel] |
+| A22 | `SingleReader`, `SingleWriter`, `AllowSynchronousContinuations` | Set only promises the application actually satisfies. The bounded factory ignores the single-reader/writer hints in RC3 and in `v11.0.0` (same `Channel.cs`; `CreateBounded` passes only capacity, full mode and the continuation setting), so no speedup follows from those hints. Synchronous continuations change reentrancy. [Factory][channel], [implementation][bounded-channel] |
 | A23 | `BackgroundService.ExecuteAsync`, `StopAsync` | Host owns the service task. Define fault and shutdown policy; cancellation can abandon queued items. [Source][background-service] |
 | A24 | `IServiceScopeFactory`, `CreateAsyncScope`, `AsyncServiceScope.DisposeAsync` | Create a scope per scoped work lifetime; await async disposal. [Extensions source][scope] |
 | A25 | `Interlocked.Increment`, `Exchange`, `Decrement` | Atomic operation on a value; not a replacement for multi-field invariants. [Source][interlocked] |
@@ -269,9 +286,9 @@ included where stated. Custom sample names are not framework APIs.
 | A39 | `Stream.Flush`, `FlushAsync`, `Dispose`, `DisposeAsync` | Flush failure must not skip owned-resource disposal. Do not invent synchronous-over-async disposal when a synchronous API exists. [Source][stream] |
 | A40 | `Task.Result`, `Wait`, `GetAwaiter().GetResult`, `ContinueWith` | Review blocking and exception/scheduler contracts; prefer await for async flow. A completed-result read is a different case from blocking. [Source][task] |
 | A41 | `AsyncMethodBuilder`, pooling builders, `IAsyncStateMachine` | Advanced implementation mechanisms. Do not globally swap builders or preserve toy implementations without evidence. Runtime async changes lowering. [Runtime guidance][runtime-async] |
-| A42 | `runtime-async=on`, SDK/compiler feature selection | Optional project-level lowering choice; force rebuilds and inspect emitted method flags as well as behavior. On RC3 a runtime-async method carries `MethodImplAttributes.Async` (`0x2000`) and no `AsyncStateMachineAttribute`. An accepted flag alone does not prove changed lowering or application benefit. [Runtime guidance][runtime-async] |
+| A42 | `runtime-async=on`, SDK/compiler feature selection | Optional project-level lowering choice; force rebuilds and inspect emitted method flags as well as behavior. On RC3 and on SDK 11.0.100 a runtime-async method carries `MethodImplAttributes.Async` (`0x2000`) and no `AsyncStateMachineAttribute`; on 11.0.100 only `<Features>runtime-async=on</Features>` changes the lowering, and `UseRuntimeAsync=true` alone leaves the state machines. An accepted flag alone does not prove changed lowering or application benefit. [Runtime guidance][runtime-async] |
 | A43 | `Process.RunAndCaptureTextAsync`, `ProcessTextOutput`, `ProcessExitStatus` | Candidate replacement for handwritten start/read/wait helpers. The ProcessStartInfo overload needs both redirects. A pre-canceled token still starts the process before cancellation is observed, and capture cancellation can throw instead of returning `Canceled`. Root Kill does not prove tree termination. Capture buffers whole output; define memory limits for unbounded output. [Exact implementation][process-scenarios] |
-| A44 | `Process.ReadAllTextAsync`, `WaitForExitAsync`, `Kill(entireProcessTree: true)` | Define ownership and encoding explicitly. Wait cancellation does not kill a process. Tree Kill plus a root wait does not prove descendant quiescence. In RC3, tree Kill signals the root before its descendants on every Unix target, and on macOS it can hang the application (see the version baseline). ReadAllTextAsync buffers full output and can retain BOM characters; define ownership if one pipe fails while the other remains open. [Capture implementation][process-capture], [tree kill][process-unix] |
+| A44 | `Process.ReadAllTextAsync`, `WaitForExitAsync`, `Kill(entireProcessTree: true)` | Define ownership and encoding explicitly. Wait cancellation does not kill a process. Tree Kill plus a root wait does not prove descendant quiescence. In RC3, tree Kill signals the root before its descendants on every Unix target, and on macOS it can hang the application. `v11.0.0` kills descendants first and falls back to scanning all children when one cannot be reaped, in source and in the installed osx-arm64 binary (see the version baseline). ReadAllTextAsync buffers full output and can retain BOM characters; define ownership if one pipe fails while the other remains open. [Capture implementation][process-capture], [tree kill][process-unix-ga] |
 
 ## Analyzer policy: verified against Meziantou.Analyzer 3.0.317
 
@@ -287,7 +304,10 @@ The installed compiler selects the package's `roslyn5.9` analyzer assemblies.
 Resolved `Analyzer` and `EditorConfigFiles` items were checked on 2026-10-29 for the
 nine projects of that time, including both the package's `none.editorconfig` and the
 repository policy; the same day's [self-review](SELF-REVIEW.md) rechecked the eight
-that remain.
+that remain. On 2026-11-23, with Roslyn 5.12.0 from SDK 11.0.100, `ResolveLockFileAnalyzers`
+still resolves the `roslyn5.9` assemblies of 3.0.317 in RefTrace.Model, RefTrace.Cli and
+RefTrace.Tests. The `EditorConfigFiles` items and the compile-only negative samples were
+not rechecked on that SDK.
 
 The 2026-11-02 reference selects **3.0.320** for its reusable configuration. Its
 published package names source `2a42a781bc8fb3c507f63c4bcfbf9719619337b2` and contains
@@ -655,7 +675,8 @@ caught, `ProcessCapture` **attempts** tree termination if the root has not alrea
 exited, then waits for the root. That catch does not cover non-cancellation capture
 failures and does not establish that every descendant exited. In RC3 the tree kill
 order is root first on every Unix target, and on macOS the tree kill can hang (see the
-version baseline). Unlike `RunAndCaptureTextAsync`,
+version baseline). (2026-11-23: on 11.0.0 it kills descendants first and carries the macOS
+reaping fix.) Unlike `RunAndCaptureTextAsync`,
 it throws on a pre-canceled token before starting the process. `AotPublishInspector`
 arms its five-second capture cancellation only after the root-exit handling finishes;
 that timer requests cancellation and is not a hard completion bound on every OS or
@@ -665,6 +686,15 @@ provide an equivalent ownership contract.
 On 2026-11-10, after the examples gained explicit imports, the current three examples
 compiled on RC3 with implicit usings off and warnings as errors. Their five behavior
 checks were not rerun.
+
+On 2026-11-23 the three examples compiled unchanged on SDK 11.0.100 with implicit usings
+off, nullable enabled and warnings as errors. The 2026-10-29 behavior checks were lost with
+their artifacts folder, so five new checks were written for this recheck: release after a
+faulted operation, a canceled waiter that neither acquires nor releases, all waiters released
+with one cancellation kept local, `Reset` keeping unsignaled waiters and starting a new
+generation after `Set`, and a failed flush still disposing once on both disposal paths. All
+five passed with default compilation and again with `runtime-async=on`. The checks lived in a
+throwaway directory and are not kept.
 
 [analyzer-package]: https://www.nuget.org/packages/Meziantou.Analyzer/3.0.317
 [analyzer-props]: https://github.com/meziantou/Meziantou.Analyzer/blob/0d0970fc06d68bc46210667b0eb0ee23c441e762/src/Meziantou.Analyzer.Pack/build/Meziantou.Analyzer.props
@@ -681,34 +711,34 @@ checks were not rerun.
 [releases]: https://raw.githubusercontent.com/dotnet/core/main/release-notes/11.0/releases.json
 [manifest]: https://github.com/dotnet/dotnet/blob/5254d8bcf59917edc1e1abc33bdf2442b77b1c70/src/source-manifest.json
 [runtime-async]: https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-11/runtime
-[process-scenarios]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Scenarios.cs
-[process-capture]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Multiplexing.cs
+[process-scenarios]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Scenarios.cs
+[process-capture]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Multiplexing.cs
 [dispose]: https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/implementing-disposeasync
 [article-runtime]: https://www.meziantou.net/dotnet-11-runtime-async-the-runtime-takes-over-await.htm
 [article-elision]: https://www.meziantou.net/prefer-async-await-over-directly-returning-task.htm
 [article-benchmarks]: https://www.meziantou.net/the-cost-of-async-a-benchmarkdotnet-study-on-dotnet-10.htm
-[task]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Private.CoreLib/src/System/Threading/Tasks/Task.cs
-[value-task]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Private.CoreLib/src/System/Threading/Tasks/ValueTask.cs
-[task-source]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Private.CoreLib/src/System/Threading/Tasks/Sources/ManualResetValueTaskSourceCore.cs
-[tcs]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Private.CoreLib/src/System/Threading/Tasks/TaskCompletionSource_T.cs
-[configured-enumerable]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Private.CoreLib/src/System/Runtime/CompilerServices/ConfiguredCancelableAsyncEnumerable.cs
-[parallel]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Threading.Tasks.Parallel/src/System/Threading/Tasks/Parallel.ForEachAsync.cs
-[channel]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Threading.Channels/src/System/Threading/Channels/Channel.cs
-[bounded-channel]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Threading.Channels/src/System/Threading/Channels/BoundedChannel.cs
-[channel-writer]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Threading.Channels/src/System/Threading/Channels/ChannelWriter.cs
-[channel-reader]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Threading.Channels/src/System/Threading/Channels/ChannelReader.cs
-[background-service]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/Microsoft.Extensions.Hosting.Abstractions/src/BackgroundService.cs
-[scope]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/Microsoft.Extensions.DependencyInjection.Abstractions/src/ServiceProviderServiceExtensions.cs
-[interlocked]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Private.CoreLib/src/System/Threading/Interlocked.cs
-[lock]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Private.CoreLib/src/System/Threading/Lock.cs
-[semaphore]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Private.CoreLib/src/System/Threading/SemaphoreSlim.cs
-[lazy]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Private.CoreLib/src/System/Lazy.cs
-[cts]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Private.CoreLib/src/System/Threading/CancellationTokenSource.cs
-[periodic-timer]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Private.CoreLib/src/System/Threading/PeriodicTimer.cs
-[configure-options]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Private.CoreLib/src/System/Threading/Tasks/ConfigureAwaitOptions.cs
-[thread-pool]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Private.CoreLib/src/System/Threading/ThreadPoolWorkQueue.cs
-[execution-context]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Private.CoreLib/src/System/Threading/ExecutionContext.cs
-[stream]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Private.CoreLib/src/System/IO/Stream.cs
+[task]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Private.CoreLib/src/System/Threading/Tasks/Task.cs
+[value-task]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Private.CoreLib/src/System/Threading/Tasks/ValueTask.cs
+[task-source]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Private.CoreLib/src/System/Threading/Tasks/Sources/ManualResetValueTaskSourceCore.cs
+[tcs]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Private.CoreLib/src/System/Threading/Tasks/TaskCompletionSource_T.cs
+[configured-enumerable]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Private.CoreLib/src/System/Runtime/CompilerServices/ConfiguredCancelableAsyncEnumerable.cs
+[parallel]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Threading.Tasks.Parallel/src/System/Threading/Tasks/Parallel.ForEachAsync.cs
+[channel]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Threading.Channels/src/System/Threading/Channels/Channel.cs
+[bounded-channel]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Threading.Channels/src/System/Threading/Channels/BoundedChannel.cs
+[channel-writer]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Threading.Channels/src/System/Threading/Channels/ChannelWriter.cs
+[channel-reader]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Threading.Channels/src/System/Threading/Channels/ChannelReader.cs
+[background-service]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/Microsoft.Extensions.Hosting.Abstractions/src/BackgroundService.cs
+[scope]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/Microsoft.Extensions.DependencyInjection.Abstractions/src/ServiceProviderServiceExtensions.cs
+[interlocked]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Private.CoreLib/src/System/Threading/Interlocked.cs
+[lock]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Private.CoreLib/src/System/Threading/Lock.cs
+[semaphore]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Private.CoreLib/src/System/Threading/SemaphoreSlim.cs
+[lazy]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Private.CoreLib/src/System/Lazy.cs
+[cts]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Private.CoreLib/src/System/Threading/CancellationTokenSource.cs
+[periodic-timer]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Private.CoreLib/src/System/Threading/PeriodicTimer.cs
+[configure-options]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Private.CoreLib/src/System/Threading/Tasks/ConfigureAwaitOptions.cs
+[thread-pool]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Private.CoreLib/src/System/Threading/ThreadPoolWorkQueue.cs
+[execution-context]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Private.CoreLib/src/System/Threading/ExecutionContext.cs
+[stream]: https://github.com/dotnet/runtime/blob/deae2e32bf0e018e09d64597b7c59b62b73bb3ce/src/libraries/System.Private.CoreLib/src/System/IO/Stream.cs
 [process-unix]: https://github.com/dotnet/runtime/blob/474ed963699fc29809015392738a15231aaae2de/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Unix.cs#L111-L194
 
 [manifest-ga]: https://github.com/dotnet/dotnet/blob/297acf930fb0f5c07fd4e51d78e521b4ad2e5d1f/src/source-manifest.json
@@ -716,6 +746,7 @@ checks were not rerun.
 [ci-ga]: https://github.com/ANcpLua/RefTrace/actions/runs/45026494105
 [release-ga]: https://github.com/dotnet/core/blob/main/release-notes/11.0/11.0.0/11.0.0.md
 [runtime-tag]: https://api.github.com/repos/dotnet/runtime/git/ref/tags/v11.0.0-rc.3.26522.148
+[runtime-tag-ga]: https://api.github.com/repos/dotnet/runtime/git/ref/tags/v11.0.0
 [article-rc3-benchmarks]: https://www.meziantou.net/runtime-async-benchmarks-dotnet-10-vs-dotnet-11.htm
 [process-unix-release]: https://github.com/dotnet/runtime/blob/5a720bffcf31577eff28c81adb6f7b7788172ece/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Unix.cs#L111-L156
 [macos-tree-fix]: https://github.com/dotnet/runtime/pull/135409
