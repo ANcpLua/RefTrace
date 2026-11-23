@@ -73,7 +73,6 @@ public sealed class AotPublishInspectorTests(TestContext context)
     [TestMethod]
     [DataRow(true, "cancelled")]
     [DataRow(false, "timed-out")]
-    [DoNotParallelize] // RC3 macOS process reaping can stall concurrent process-tree termination.
     [Timeout(30000, CooperativeCancellation = true)]
     public async Task Run_CancellationOrDeadline_TerminatesTheProcessTree(bool cancelCaller, string outcome)
     {

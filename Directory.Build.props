@@ -5,7 +5,9 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- Enable the reviewed async/threading rules explicitly in .editorconfig. -->
     <MeziantouAnalysisMode>None</MeziantouAnalysisMode>
-    <Version>0.9.0-preview.1</Version>
+    <!-- C# 15 runtime async: async methods compile without state machines. See docs/ASYNC-THREADING.md. -->
+    <Features>$(Features);runtime-async=on</Features>
+    <Version>0.10.0-preview.1</Version>
     <Authors>Alexander Nachtmann</Authors>
     <RepositoryUrl>https://github.com/ANcpLua/RefTrace</RepositoryUrl>
     <RepositoryType>git</RepositoryType>

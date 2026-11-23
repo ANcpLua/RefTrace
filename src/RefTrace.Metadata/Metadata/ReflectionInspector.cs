@@ -26,6 +26,7 @@ public static class ReflectionInspector
         var reader = pe.GetMetadataReader();
         if (!reader.IsAssembly) throw new InspectionException("unsupported-artifact", "Expected an assembly manifest.");
         var names = new MetadataNames(reader);
+        var declaredBy = StateMachineOwners(reader, names);
         var findings = new List<ReflectionFinding>();
         var count = 0;
         foreach (var handle in reader.MethodDefinitions)
@@ -35,14 +36,20 @@ public static class ReflectionInspector
             count++;
             var body = pe.GetMethodBody(method.RelativeVirtualAddress);
             var caller = names.Method(handle);
+            var location = caller.Type + "." + caller.Member;
+            var declared = caller.Member == "MoveNext" ? declaredBy.GetValueOrDefault(caller.Type) : default;
             foreach (var call in IlReader.Calls(body.GetILContent().AsSpan()))
             {
                 var target = names.Method(MetadataTokens.EntityHandle(call.Token));
                 var classification = Classify(target.Assembly, target.Type, target.Member);
                 if (classification is null) continue;
-                findings.Add(new(caller.Type + "." + caller.Member, "0x" + MetadataTokens.GetToken(handle).ToString("x8"),
+                findings.Add(new(location, "0x" + MetadataTokens.GetToken(handle).ToString("x8"),
                     call.Offset, call.Instruction.ToString(), target.Assembly, target.Type, target.Member,
-                    classification.Value.Category, classification.Value.Reason));
+                    classification.Value.Category, classification.Value.Reason)
+                {
+                    DeclaredMethod = declared.Name,
+                    DeclaredMethodToken = declared.Name is null ? null : "0x" + MetadataTokens.GetToken(declared.Handle).ToString("x8")
+                });
             }
         }
         return new(sourcePath, reader.GetString(reader.GetAssemblyDefinition().Name),
@@ -50,6 +57,29 @@ public static class ReflectionInspector
             ["Static IL method-reference catalog (calls and delegate targets); presence does not prove execution, reachability or AOT incompatibility.",
              "Absence does not exclude reflection behind dependencies, delegates, native code, or other APIs.",
              "Reference assemblies may contain no implementation IL; source-level dataflow is not analyzed."]);
+    }
+
+    // An async or iterator method compiled to a state machine keeps its body in a generated MoveNext.
+    // The declaring method names that type in AsyncStateMachine, IteratorStateMachine or
+    // AsyncIteratorStateMachine; runtime-async methods have no state machine and keep their own body.
+    private static Dictionary<string, (string? Name, MethodDefinitionHandle Handle)> StateMachineOwners(MetadataReader reader, MetadataNames names)
+    {
+        var owners = new Dictionary<string, (string? Name, MethodDefinitionHandle Handle)>(StringComparer.Ordinal);
+        foreach (var handle in reader.MethodDefinitions)
+        {
+            foreach (var attributeHandle in reader.GetMethodDefinition(handle).GetCustomAttributes())
+            {
+                var attribute = reader.GetCustomAttribute(attributeHandle);
+                if (names.Method(attribute.Constructor).Type is not ("System.Runtime.CompilerServices.AsyncStateMachineAttribute"
+                    or "System.Runtime.CompilerServices.IteratorStateMachineAttribute"
+                    or "System.Runtime.CompilerServices.AsyncIteratorStateMachineAttribute")) continue;
+                var blob = reader.GetBlobReader(attribute.Value);
+                if (blob.ReadUInt16() != 1) throw new BadImageFormatException("Invalid state-machine attribute prolog.");
+                var owner = names.Method(handle);
+                if (blob.ReadSerializedString() is { } stateMachine) owners[stateMachine] = (owner.Type + "." + owner.Member, handle);
+            }
+        }
+        return owners;
     }
 
     private static (string Category, string Reason)? Classify(string assembly, string type, string member)

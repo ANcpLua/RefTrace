@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Restore fixture: NuGet 8.0 records the analyzer assets of Meziantou.Analyzer, the repository's
+       GlobalPackageReference, in this project's project.assets.json. -->
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <RestoreEnableAnalyzerAssets>true</RestoreEnableAnalyzerAssets>
+  </PropertyGroup>
+</Project>

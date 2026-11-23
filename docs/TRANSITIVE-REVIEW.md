@@ -1,9 +1,5 @@
 # Transitive compatibility review — 2026-10-30
 
-> 2026-11-23: the pins moved from the RC3 builds to the released packages (DiaSymReader 3.0.0; DependencyModel
-> and ProtectedData 11.0.0). The review below was performed on RC3 and has not been rerun on the released
-> packages; the build and the test suite pass with them.
-
 The 0.8.0 review tested all six candidates retained by the [0.7.0 self-review](SELF-REVIEW.md).
 Five explicit transitive pins live in `Directory.Packages.props`, with
 `CentralPackageTransitivePinningEnabled`. Application Insights was initially retained
@@ -31,6 +27,8 @@ The remaining MSTest extension profile still supplies TRX reporting and coverage
 The shipped CLI never contained either removed package; its runtime dependency
 inventory is unchanged. Removal evidence is saved under
 `artifacts/telemetry-removal-20261030/`.
+(2026-11-23: that material was local and untracked, and it was deleted on 2026-11-23. It
+no longer exists.)
 
 The 0.8.1 Release build has zero warnings or errors. Normal execution and execution
 with coverage both pass all 125 tests, with zero failures or skips; coverage contains
@@ -49,6 +47,8 @@ The review started at `f686a2e2de5eacbe31975ca60b4ce12e9fb34a62`. Fresh NuGet li
 receipts, package hashes, exact source, isolated probes, test results and diagnostic
 stacks are under `artifacts/transitive-review-20261029/`; the directory name records
 the UTC start date. Downloaded package source is not committed.
+(2026-11-23: that material was local and untracked, and it was deleted on 2026-11-23. It
+no longer exists.)
 
 ## Decisions
 
@@ -70,7 +70,52 @@ portable-PDB execution evidence. Matching interfaces and COM GUIDs are evidence
 about that boundary, not proof of every native reader implementation. The added
 `CoCreateInstance` fallback requires `UseComRegistry`; CodeCoverage passes options
 zero and does not request that changed branch. These decisions
-apply to RefTrace's pinned .NET 11 RC3/MSTest/NuGet graph.
+were made against RefTrace's .NET 11 RC3/MSTest/NuGet graph; they have not been
+rechecked since the pins moved to SDK 11.0.100 and the 11.0.0/3.0.0 packages.
+
+> 2026-11-23: rechecked on the released packages and NuGet 8.0; see
+> [the recheck below](#recheck-on-the-released-packages--2026-11-23). The decisions above
+> keep their 2026-10-30 evidence.
+
+## Recheck on the released packages — 2026-11-23
+
+Rerun on SDK 11.0.100 with the graph of `77afe16` (NuGet.ProjectModel 8.0.0). Same five
+upgrade pins, same owners, same consumer checks. The collector in `tooling/reftrace_audit`
+downloaded each package again and matched its bytes with the NuGet catalog SHA-512, then
+compared declared signatures from `ref assembly --type '*'`. Owners and requested versions
+come from `ref assets tests/RefTrace.Tests/RefTrace.Tests.csproj --json`. The raw evidence
+is local and untracked under `artifacts/transitive-review-20261123/`; the results are
+recorded here so that this section does not depend on it.
+
+| Package and owner (requested) | Owner's version → pin | Declared signatures | Consumer check | Decision |
+| --- | --- | --- | --- | --- |
+| Microsoft.DiaSymReader; CodeCoverage 18.12.0 (`[2.2.10, )`) | 2.2.10 → 3.0.0 | None added or removed, as with RC3; RC3 → 3.0.0 also none. Public-key token `31bf3856ad364e35` and all 33 COM GUIDs unchanged (`GuidAttribute` scan, outside RefTrace) | Full suite with `--coverage` on macOS ARM64: 156 passed; Cobertura for all six production modules | **Keep 3.0.0** |
+| Microsoft.Extensions.DependencyModel; CodeCoverage 18.12.0 (`[10.0.10, )`) | 10.0.10 → 11.0.0 | None added or removed; RC3 → 11.0.0 none | Same coverage run | **Keep 11.0.0** |
+| Microsoft.TestPlatform.ObjectModel; MSTest.TestAdapter 4.5.2 (`[18.10.1, )`) | 18.10.1 → 18.11.0 | None added or removed | The adapter discovers and runs all 156 tests | **Keep 18.11.0** |
+| Newtonsoft.Json; NuGet.Packaging 8.0.0 (`[13.0.3, )`) | 13.0.3 → 14.0.1-beta2 | Nine added, none removed (unchanged package) | `DependencyCompatibilityTests` lock-file and runtime-graph round trips through NuGet 8.0.0's writers, including the new analyzer-asset writer | **Keep 14.0.1-beta2** |
+| System.Security.Cryptography.ProtectedData; NuGet.Configuration 8.0.0 (`[8.0.0, )`) | 8.0.0 → 11.0.0 | Six added span overloads, none removed; RC3 → 11.0.0 none | `NuGetEncryption_RoundTripsOnWindowsAndRejectsUnsupportedPlatforms`: platform rejection on macOS here; the DPAPI round trip passed in the Windows job of [CI run 45163580603](https://github.com/ANcpLua/RefTrace/actions/runs/45163580603) | **Keep 11.0.0** |
+
+What changed since 2026-10-30:
+
+- The three .NET packages are the release builds. Each nuspec records
+  `dotnet/dotnet@297acf930fb0f5c07fd4e51d78e521b4ad2e5d1f` instead of `5254d8bc`, and
+  their declared signatures equal those of the RC3 builds.
+- The NuGet owners moved from 7.9.0 to 8.0.0. Their `net10.0` dependency groups request
+  the same lower bounds as the 7.9.0 `net8.0` groups: Newtonsoft.Json 13.0.3 from
+  Packaging and ProtectedData 8.0.0 from Configuration. The pins still raise exactly those
+  two edges.
+- Application Insights and the MTP telemetry extension remain absent from the test graph;
+  the packaged `ref check` in CI enforces it.
+- NuGet now lists newer candidates for owners and pins: MSTest 4.5.3 and MTP 2.5.3
+  (published 2026-11-11) and TestPlatform.ObjectModel 18.12.0 (2026-11-11), which adds
+  `EqtHash.GuidFromStringXxHash128` and removes nothing. This recheck does not adopt them;
+  each needs its own review against its owner.
+
+Not rechecked: the isolated coverage comparison with its portable-PDB fixture, the
+adapter's 31 registered properties and the Application Insights probe. Their harnesses
+lived in the deleted `artifacts/transitive-review-20261029/`. The full-suite coverage run
+and CI's coverage on Linux, macOS and Windows ([run 45163580603](https://github.com/ANcpLua/RefTrace/actions/runs/45163580603)) are the
+consumer evidence for this recheck.
 
 ## Sources
 
@@ -114,6 +159,13 @@ those disposable fixture processes were terminated to release the run. The three
 methods that exercise process-tree cleanup now run outside parallel test execution.
 This is a scheduling mitigation for the observed runtime behavior, not a replacement
 for the runtime's process implementation or a claim that its underlying issue is fixed.
+
+> 2026-11-23: .NET 11.0.0 carries the macOS fix (see the [async guide](ASYNC-THREADING.md)).
+> `Run_CancellationOrDeadline_TerminatesTheProcessTree` runs in parallel again on SDK
+> 11.0.100: 30 consecutive runs of `AotPublishInspectorTests` (14 tests, 15–16 s each) and
+> 10 full-suite runs (156 tests, 25–26 s each) passed on macOS ARM64 without a stall, and
+> [CI run 45163580603](https://github.com/ANcpLua/RefTrace/actions/runs/45163580603) passed the suite on Ubuntu, macOS and Windows.
+> The other two methods keep `[DoNotParallelize]` for their own stated reasons.
 
 ## Local validation
 

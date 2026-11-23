@@ -41,7 +41,7 @@ retrieval times are retained so a cache hit is not presented as a new fetch.
 | --- | --- |
 | Each restored assets target | Actual direct/transitive package coordinates, including custom output layouts |
 | The nearest global.json for each project | Explicit MSBuild SDK package pins |
-| NuGet service index, flat container and registration | Available versions and whether a candidate is listed |
+| NuGet service index, flat container and registration | Available versions, whether a candidate is listed and when it was published |
 | `ref versions` | NuGet's version ordering, including numeric prerelease identifiers |
 | Catalog SHA-512 and downloaded archive | Package bytes match the feed's recorded digest |
 | `ref assembly --type '*'` | Static references and declared public/protected API signatures |
@@ -73,6 +73,35 @@ source or implementations were reviewed. Missing configured source or decompilat
 remain failures. Source retrieval uses immutable repository coordinates. The bundled
 TraceEvent fallback is labelled as a separately configured upstream revision because its
 package omits that provenance. Do not replace missing source with a guessed branch.
+
+## Minimum publish age
+
+NuGet 8.0 (SDK 11.0.100) lets `nuget.config` give a package source a minimum publish age
+(`minPublishAgeHours`) and exempt package ID patterns (`minPublishAgeExceptions`). Review
+reads both with `NuGet.Configuration` 8.0 from the configuration that applies to the
+input's directory, the same files restore reads, for the source it queries:
+`https://api.nuget.org/v3/index.json`. For every newer candidate it compares the
+registration's `published` date with `collectedAt` and reports one result:
+
+| Result | Meaning |
+| --- | --- |
+| `younger-than-minimum` | Fewer hours have passed since publication than the source's minimum |
+| `old-enough` | The minimum has passed |
+| `excepted` | A `minPublishAgeExceptions` pattern matches the package ID; the pattern is shown |
+| `no-minimum` | The source is configured without a minimum (or with `0`) |
+| `source-not-configured` | No enabled source in the configuration has the nuget.org URL |
+| `publish-date-missing` | The registration gave no usable publish date; nothing is assumed |
+
+The summary names the source, its minimum, the exception patterns and the configuration
+files. A young candidate is a finding, not a failure, and does not change the exit code.
+
+`NuGet.Configuration` provides the configured hours and the exception matching. It does
+not provide NuGet's eligibility decision, which lives in the package-selection code of
+`dotnet package add` and `dotnet package update` and is not a RefTrace dependency. Review
+therefore applies the documented rule (a version qualifies once the minimum has passed
+since its publish date) to nuget.org only. It does not evaluate other configured sources,
+one of which can make the same version eligible, and it does not apply Package Source
+Mapping, which can remove nuget.org from consideration for a package.
 
 ## Choosing an upgrade
 

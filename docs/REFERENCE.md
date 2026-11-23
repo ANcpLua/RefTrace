@@ -68,7 +68,8 @@ listed .NET project returns `file-not-found` with its resolved path. An empty so
 or one with no .NET projects returns `project-not-found`. Solutions are never read as
 assets JSON, and XML DTDs are not accepted.
 
-`packages` omits asset arrays by default. `--assets` includes them, `--direct` restricts
+`packages` omits asset arrays by default. `--assets` includes compile, analyzer and runtime
+paths, `--direct` restricts
 the result to direct dependencies, and `--package` filters IDs by a case-insensitive glob.
 JSON and plain output retain full values. A filter with no matches produces an empty list.
 See [package reviews](PACKAGE-AUDIT.md) for `review` and its saved evidence contract.
@@ -77,6 +78,13 @@ See [package reviews](PACKAGE-AUDIT.md) for `review` and its saved evidence cont
 reflection, dynamic loading and dynamic-code method references with caller tokens and IL
 offsets. Operands are not mistaken for opcodes. It does not prove execution or reachability.
 `--fail-on-findings` makes these references an explicit exit-1 policy.
+`caller`, `callerToken` and `ilOffset` locate the IL that contains the call. When that IL
+is the generated `MoveNext` of an async or iterator state machine, `declaredMethod` and
+`declaredMethodToken` name the method the source declared, found through its `AsyncStateMachineAttribute`,
+`IteratorStateMachineAttribute` or `AsyncIteratorStateMachineAttribute`. A runtime-async
+method (C# 15, `runtime-async=on`) has no state machine: its calls have the method itself as
+`caller` and no `declaredMethod`. Lambdas and local functions are reported under their
+compiler-generated names only.
 
 `aot inspect` reads compatibility declarations, annotations and static reflection evidence.
 Its assessment remains `not-established`, even when compatibility is declared or no known
@@ -114,6 +122,15 @@ does not establish AOT compatibility.
   Nodes preserve resolved versions and selected compile/runtime assets; edges preserve
   requested version constraints. Graphs are scoped to one restored target. The file is a
   snapshot of a restore: RefTrace does not prove that it matches today's project files.
+* **Analyzer assets:** NuGet 8.0 (SDK 11.0.100) records a package's analyzer assets in
+  each target only when the project sets `RestoreEnableAnalyzerAssets` to `true`. RefTrace
+  then lists them per node (`analyzerAssets`) and sets `analyzerAssetsRecorded`. Without the
+  property the field is absent and `--assets` says the assets were not recorded; an empty
+  list would wrongly claim that a package has no analyzers. Restore records every
+  `analyzers/dotnet/roslyn*/` folder of the project's language (Meziantou.Analyzer 3.0.317:
+  `roslyn4.8` through `roslyn5.9`). Which folder the compiler loads is decided later by the
+  SDK build and is not in the assets file. SDK 11.0.100 recorded them for a `net10.0` target
+  as well when the project multi-targeted `net10.0;net11.0`.
 * **Missing nodes:** NuGet may retain a dependency constraint for a library excluded from
   a consuming project's target. Such nodes are marked `unresolved`, never silently presented
   as resolved packages. A policy matching one is inconclusive (exit 2). Unmatched unresolved
@@ -131,6 +148,47 @@ does not establish AOT compatibility.
   as methods. This is metadata evidence, not a binary/source compatibility verdict.
   Inherited members, nullable annotations and other custom-attribute semantics are not
   expanded. Names use metadata generic arity; type names do not encode assembly scope.
+* **C# 15 and .NET 11 metadata:** checked against assemblies compiled by SDK 11.0.100
+  (`tests/RefTrace.LanguageFixture`).
+  * Types carry `modifiers` (`abstract`, `sealed`, `static`, `closed`, `readonly`, `ref`) and
+    `layout` (`auto`, `sequential`, `explicit`, or `extended CStruct`/`extended CUnion`).
+  * A `closed` class is abstract in metadata and carries `IsClosedTypeAttribute`, whose
+    `DerivedTypes` lists the direct subtypes; RefTrace reports them as `closedDerivedTypes`.
+    Closure is not transitive, and metadata records nothing on the subtypes themselves.
+  * A type with `UnionAttribute` reports `unionCases`, the types the compiler treats as its
+    cases: the parameters of the static `Create` methods of a nested `IUnionMembers` provider
+    when there is one, otherwise of its public single-parameter constructors. A case taken
+    by `in` reference is reported as its value type. A `union` declaration and a
+    hand-written `[Union]` type are reported alike; metadata does not record which one the
+    source used.
+  * Members of a C# 14 extension block appear on the static class with a `receiver` and an
+    `extension(...)` prefix in `signature`, including extension properties and indexers. A
+    generic block reports its type parameters and constraints in `extensionGenericParameters`
+    and in the prefix, as in `extension<T>(List`1<T> list) where T : class`; they come from
+    the marker type, because the grouping type uses compiler names such as `$T0`. The
+    compiler's grouping and marker types (`<G>$…`, `<M>$…`) are not listed. The static
+    implementation methods that compiled callers bind to, such as `get_IsEmpty(Buffer)`,
+    remain listed as methods. A grouping member without a resolvable marker is shown with
+    `extension(receiver not recorded)`.
+  * An extended-layout type gets a note when .NET 11.0.0 refuses to load it (observed as
+    `TypeLoadException`): it is a ref struct, or an instance field is a reference, a byref,
+    or a value type with auto layout, directly or inside a value type of the same assembly.
+    The note follows the path to the offending field. A field whose type is a value type from
+    another assembly (`DateTime` has auto layout, `Guid` does not), a generic value type or a
+    type parameter without an `unmanaged` constraint is reported as undecidable from this
+    assembly's metadata. Enums are accepted.
+  * `memorySafetyRulesVersion` comes from the module's `MemorySafetyRulesAttribute` (2 under
+    C# 15's updated rules). Under version 2 each member reports `requiresUnsafe`, true when it
+    carries `RequiresUnsafeAttribute`, and its signature shows `unsafe`. Without module rules
+    `requiresUnsafe` is absent: an unmarked member then says nothing about safety. .NET
+    11.0.0's reference assemblies use version 2 and mark, for example, `Marshal.Copy`; the
+    implementation in `System.Private.CoreLib` records no rules and no marker.
+  * A runtime-async method and a state-machine async method have the same declared
+    signature. Metadata records the difference (`MethodImplAttributes.Async`, `0x2000`,
+    versus `AsyncStateMachineAttribute`), but it is implementation, not API, and `assembly`
+    does not print it.
+  * A method that is virtual and final in metadata, such as an implicit interface
+    implementation, is not printed as `virtual`.
 * **Runtime observation:** `processes` lists processes advertising .NET diagnostics.
   `runtime` attaches to an explicitly chosen PID, observes loader events for `--seconds`,
   then requests CLR rundown so previously loaded assemblies can also be reported.
@@ -209,6 +267,8 @@ Layout:
 * `RefTrace.Cli`: command parsing, Spectre.Console presentation and exit-code mapping.
 * `RefTrace.Tests`: reader, graph, policy, metadata and CLI tests using MSTest with native MTP.
 * `RefTrace.RuntimeFixture`: a controlled child process for live-observation integration tests.
+* `RefTrace.AnalyzerAssetsFixture`: a project that restores with `RestoreEnableAnalyzerAssets`.
+* `RefTrace.LanguageFixture`: C# 15 and .NET 11 constructs whose metadata the tests read.
 
 Keep artifact-format adaptation in the readers. Keep graph policy independent of files and
 the CLI. The core reads streams as well as paths so new formats and tests do not require
@@ -247,8 +307,8 @@ RefTrace is not a vulnerability scanner; a passed dependency policy is not a sec
 For the prepared GitHub Actions workflow and NuGet account setup, see [Publishing setup](PUBLISHING.md).
 
 ```sh
-dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj -c Release -o artifacts/packages -p:Version=0.9.0-preview.1
-dotnet tool install RefTrace --version 0.9.0-preview.1 --source ./artifacts/packages --tool-path ./artifacts/tools
+dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj -c Release -o artifacts/packages -p:Version=0.10.0-preview.1
+dotnet tool install RefTrace --version 0.10.0-preview.1 --source ./artifacts/packages --tool-path ./artifacts/tools
 ./artifacts/tools/ref --help
 ```
 
@@ -258,7 +318,7 @@ Publishing requires ownership of the NuGet package ID and your NuGet publishing 
 or configured trusted publishing. Local packaging does not reserve the ID.
 
 ```sh
-dotnet nuget push artifacts/packages/RefTrace.0.9.0-preview.1.nupkg --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY"
+dotnet nuget push artifacts/packages/RefTrace.0.10.0-preview.1.nupkg --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY"
 ```
 
 The project has no automatic publish step. `CHANGELOG.md` tracks behavior changes; package

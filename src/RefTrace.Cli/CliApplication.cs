@@ -39,7 +39,7 @@ public static partial class CliApplication
         root.Subcommands.Add(assets);
 
         var (packagesCommand, packagesFile, packagesTarget) = GraphCommand("packages", "List resolved packages.");
-        var includeAssets = new Option<bool>("--assets") { Description = "Include compile/runtime asset paths." };
+        var includeAssets = new Option<bool>("--assets") { Description = "Include compile, analyzer and runtime asset paths." };
         var packagePattern = new Option<string>("--package") { Description = "Filter package IDs by glob (case-insensitive)." };
         var directOnly = new Option<bool>("--direct") { Description = "Only list direct package dependencies." };
         packagesCommand.Options.Add(includeAssets);
@@ -49,17 +49,22 @@ public static partial class CliApplication
         {
             var graph = await ReadGraphAsync(parse.GetValue(packagesFile)!, parse.GetValue(packagesTarget), token).ConfigureAwait(false);
             var direct = graph.Edges.Where(e => e.From == graph.RootId).Select(e => e.To).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var assetPaths = parse.GetValue(includeAssets);
             var report = new PackageReport(graph.SourcePath, graph.Target,
                 graph.Nodes.Where(n => n.Kind == "package"
                     && (!parse.GetValue(directOnly) || direct.Contains(n.Id))
                     && (parse.GetValue(packagePattern) is not { } pattern || System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(pattern, n.Id, ignoreCase: true)))
                     .Select(n => new PackageItem(n.Id, n.Version, direct.Contains(n.Id),
-                        parse.GetValue(includeAssets) ? n.CompileAssets : null, parse.GetValue(includeAssets) ? n.RuntimeAssets : null)).ToArray(),
-                graph.Nodes.Where(n => n.Kind == "unresolved").Select(n => n.Id).ToArray());
-            return (report, 0, string.Join(Environment.NewLine, report.Packages.SelectMany(p =>
+                        assetPaths ? n.CompileAssets : null, assetPaths ? n.RuntimeAssets : null,
+                        assetPaths ? n.AnalyzerAssets : null)).ToArray(),
+                graph.Nodes.Where(n => n.Kind == "unresolved").Select(n => n.Id).ToArray(), graph.AnalyzerAssetsRecorded);
+            IEnumerable<string> lines = report.Packages.SelectMany(p =>
                 new[] { $"{p.Id}/{p.Version} ({(p.Direct ? "direct" : "transitive")})" }
                     .Concat((p.CompileAssets ?? []).Select(a => "  compile: " + a))
-                    .Concat((p.RuntimeAssets ?? []).Select(a => "  runtime: " + a)))));
+                    .Concat((p.AnalyzerAssets ?? []).Select(a => "  analyzer: " + a))
+                    .Concat((p.RuntimeAssets ?? []).Select(a => "  runtime: " + a)));
+            if (assetPaths && !report.AnalyzerAssetsRecorded) lines = lines.Append(AnalyzerAssetsNotRecorded);
+            return (report, 0, string.Join(Environment.NewLine, lines));
         }, output, error, parse.GetValue(plain)));
         root.Subcommands.Add(packagesCommand);
 
@@ -120,7 +125,8 @@ public static partial class CliApplication
             var report = ReflectionInspector.Read(parse.GetValue(reflectionFile)!);
             return (report, parse.GetValue(failOnFindings) && report.Findings.Count != 0 ? 1 : 0,
                 $"Static method references: {report.Findings.Count}; method bodies scanned: {report.MethodBodiesScanned}.{Environment.NewLine}" +
-                string.Join(Environment.NewLine, report.Findings.Select(f => $"{f.Caller} IL_{f.IlOffset:x4} -> {f.TargetType}.{f.TargetMember} ({f.Category})")));
+                string.Join(Environment.NewLine, report.Findings.Select(f => $"{f.Caller} IL_{f.IlOffset:x4} -> {f.TargetType}.{f.TargetMember} ({f.Category})"
+                    + (f.DeclaredMethod is null ? "" : $"; declared method {f.DeclaredMethod}"))));
         }, output, error, parse.GetValue(plain)));
         root.Subcommands.Add(reflection);
 
@@ -241,6 +247,9 @@ public static partial class CliApplication
         }, cancellationToken).ConfigureAwait(false);
     }
 
+    internal const string AnalyzerAssetsNotRecorded =
+        "Analyzer assets: not recorded. The restore did not set RestoreEnableAnalyzerAssets.";
+
     private static (Command Command, Argument<string> File, Option<string> Target) GraphCommand(string name, string description, Argument? leading = null)
     {
         var command = new Command(name, description);
@@ -355,15 +364,27 @@ public static partial class CliApplication
             $"Informational version: {report.InformationalVersion ?? "not recorded"}",
             $"MVID: {report.ModuleVersionId}",
             $"Reference assembly: {report.IsReferenceAssembly}",
+            $"Memory-safety rules: {report.MemorySafetyRulesVersion?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "not recorded"}",
             $"Evidence: {report.SourcePath}",
             "Static assembly references:",
             .. report.References.Select(r => $"  {r.Name}, Version={r.Version}, PublicKeyToken={r.PublicKeyToken ?? "none"}")
         ];
         foreach (var type in report.Types)
         {
-            lines.Add($"Type: {type.Name}");
+            lines.Add($"Type: {DescribeType(type)}");
             lines.AddRange(type.Members.Select(m => $"  {m.Signature}"));
+            lines.AddRange(type.Notes.Select(note => $"  note: {note}"));
         }
         return string.Join(Environment.NewLine, lines);
+    }
+
+    // Kind, modifiers and the C# 15 / .NET 11 type facts that metadata records beyond the members.
+    internal static string DescribeType(ApiType type)
+    {
+        var text = string.Join(" ", [.. type.Modifiers, type.Kind, type.Name]);
+        if (type.UnionCases is { } cases) text += "; union of " + (cases.Count == 0 ? "no public single-parameter constructors" : string.Join(", ", cases));
+        if (type.ClosedDerivedTypes is { } derived) text += "; direct subtypes: " + string.Join(", ", derived);
+        if (type.Layout is { } layout && (type.Kind, layout) is not (("class", "auto") or ("struct", "sequential"))) text += "; layout: " + layout;
+        return text;
     }
 }

@@ -110,7 +110,7 @@ public static class ProjectInputs
         if (document.Root?.Name != "Solution")
             throw new InspectionException("invalid-solution", "Expected a <Solution> root element without an XML namespace in the .slnx file.", path);
         var directory = Path.GetDirectoryName(path)!;
-        var projects = new HashSet<string>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        HashSet<string> projects = [with(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal)];
         var entries = document.Root.Elements("Project")
             .Concat(document.Root.Elements("Folder").SelectMany(folder => folder.Elements("Project")));
         foreach (var entry in entries)

@@ -25,6 +25,43 @@ public sealed class AssetsInspectorTests
     }
 
     [TestMethod]
+    public void Read_WithoutAnalyzerOptIn_LeavesAnalyzerAssetsUnrecorded()
+    {
+        var graph = Fixtures.Read();
+        Assert.IsFalse(graph.AnalyzerAssetsRecorded);
+        Assert.IsTrue(graph.Nodes.All(n => n.AnalyzerAssets is null));
+    }
+
+    [TestMethod]
+    public void Read_AnalyzerOptIn_RecordsAnalyzerAssetsPerPackage()
+    {
+        var graph = Fixtures.Read(Fixtures.WithAnalyzerAssets());
+        Assert.IsTrue(graph.AnalyzerAssetsRecorded);
+        var alpha = graph.Nodes.Single(n => n.Id == "Alpha");
+        CollectionAssert.AreEqual(new[]
+        {
+            "analyzers/dotnet/roslyn4.8/cs/Alpha.Analyzers.dll", "analyzers/dotnet/roslyn5.0/cs/Alpha.Analyzers.dll"
+        }, alpha.AnalyzerAssets!.ToArray());
+        CollectionAssert.AreEqual(new[] { "ref/net10.0/Alpha.dll" }, alpha.CompileAssets.ToArray());
+        Assert.IsEmpty(graph.Nodes.Single(n => n.Id == "Beta").AnalyzerAssets!);
+    }
+
+    [TestMethod]
+    public void Read_RestoredAnalyzerFixture_ListsTheGlobalAnalyzerPackage()
+    {
+        // tests/RefTrace.AnalyzerAssetsFixture sets RestoreEnableAnalyzerAssets; the solution build restores it.
+        var assets = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..",
+            "obj", "RefTrace.AnalyzerAssetsFixture", "project.assets.json"));
+        var graph = AssetsInspector.Read(assets);
+        Assert.IsTrue(graph.AnalyzerAssetsRecorded);
+        var analyzer = graph.Nodes.Single(n => n.Id == "Meziantou.Analyzer");
+        Assert.IsEmpty(analyzer.CompileAssets);
+        Assert.IsEmpty(analyzer.RuntimeAssets);
+        Assert.IsTrue(analyzer.AnalyzerAssets!.Any(path => path.StartsWith("analyzers/dotnet/", StringComparison.Ordinal)
+            && path.EndsWith("/cs/Meziantou.Analyzer.dll", StringComparison.Ordinal)));
+    }
+
+    [TestMethod]
     public void Read_MultipleTargets_RequiresExplicitSelection()
     {
         var json = Fixtures.Modify(j => j["targets"]!["net10.0/linux-x64"] = j["targets"]!["net10.0"]!.DeepClone());

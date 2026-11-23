@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Metadata fixture: C# 15 and .NET 11 constructs as SDK 11.0.100 compiles them. Tests read its
+       metadata; nothing loads or runs it. -->
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <!-- The memory-safety redesign is a preview: it needs LangVersion preview and this feature. -->
+    <LangVersion>preview</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Features>$(Features);updated-memory-safety-rules</Features>
+  </PropertyGroup>
+</Project>
