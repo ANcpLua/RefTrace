@@ -150,26 +150,33 @@ does not establish AOT compatibility.
   expanded. Names use metadata generic arity; type names do not encode assembly scope.
 * **C# 15 and .NET 11 metadata:** checked against assemblies compiled by SDK 11.0.100
   (`tests/RefTrace.LanguageFixture`).
-  * Types carry `modifiers` (`abstract`, `sealed`, `static`, `closed`, `readonly`) and
+  * Types carry `modifiers` (`abstract`, `sealed`, `static`, `closed`, `readonly`, `ref`) and
     `layout` (`auto`, `sequential`, `explicit`, or `extended CStruct`/`extended CUnion`).
   * A `closed` class is abstract in metadata and carries `IsClosedTypeAttribute`, whose
     `DerivedTypes` lists the direct subtypes; RefTrace reports them as `closedDerivedTypes`.
     Closure is not transitive, and metadata records nothing on the subtypes themselves.
-  * A type with `UnionAttribute` reports `unionCases`: the parameter types of its public
-    single-parameter constructors, which the compiler treats as the cases. A `union`
-    declaration and a hand-written `[Union]` type are reported alike; metadata does not
-    record which one the source used. Cases supplied through a member provider
-    (`IUnionMembers`) are not read.
+  * A type with `UnionAttribute` reports `unionCases`, the types the compiler treats as its
+    cases: the parameters of the static `Create` methods of a nested `IUnionMembers` provider
+    when there is one, otherwise of its public single-parameter constructors. A case taken
+    by `in` reference is reported as its value type. A `union` declaration and a
+    hand-written `[Union]` type are reported alike; metadata does not record which one the
+    source used.
   * Members of a C# 14 extension block appear on the static class with a `receiver` and an
-    `extension(...)` prefix in `signature`, including extension properties and indexers. The
+    `extension(...)` prefix in `signature`, including extension properties and indexers. A
+    generic block reports its type parameters and constraints in `extensionGenericParameters`
+    and in the prefix, as in `extension<T>(List`1<T> list) where T : class`; they come from
+    the marker type, because the grouping type uses compiler names such as `$T0`. The
     compiler's grouping and marker types (`<G>$…`, `<M>$…`) are not listed. The static
     implementation methods that compiled callers bind to, such as `get_IsEmpty(Buffer)`,
-    remain listed as methods.
-  * An extended-layout type whose instance fields hold a reference, directly or in a value
-    type of the same assembly, gets a note: the runtime refuses to load it (observed as
-    `TypeLoadException` on .NET 11.0.0). A field whose type is a value type from another
-    assembly or an unconstrained type parameter is reported as undecidable from this
-    assembly's metadata.
+    remain listed as methods. A grouping member without a resolvable marker is shown with
+    `extension(receiver not recorded)`.
+  * An extended-layout type gets a note when .NET 11.0.0 refuses to load it (observed as
+    `TypeLoadException`): it is a ref struct, or an instance field is a reference, a byref,
+    or a value type with auto layout, directly or inside a value type of the same assembly.
+    The note follows the path to the offending field. A field whose type is a value type from
+    another assembly (`DateTime` has auto layout, `Guid` does not), a generic value type or a
+    type parameter without an `unmanaged` constraint is reported as undecidable from this
+    assembly's metadata. Enums are accepted.
   * `memorySafetyRulesVersion` comes from the module's `MemorySafetyRulesAttribute` (2 under
     C# 15's updated rules). Under version 2 each member reports `requiresUnsafe`, true when it
     carries `RequiresUnsafeAttribute`, and its signature shows `unsafe`. Without module rules

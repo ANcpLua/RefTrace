@@ -33,8 +33,9 @@ public sealed record ApiMember(string Name, string Kind, string Accessibility, b
     string Type, IReadOnlyList<ApiParameter> Parameters, IReadOnlyList<ApiGenericParameter> GenericParameters,
     IReadOnlyList<string> Accessors, string Signature)
 {
-    // The receiver of a C# 14 extension member; null for ordinary members.
+    // The receiver of a C# 14 extension member and the type parameters of its extension block.
     public ApiParameter? Receiver { get; init; }
+    public IReadOnlyList<ApiGenericParameter>? ExtensionGenericParameters { get; init; }
     // [RequiresUnsafe]: true; false when the module uses memory-safety rules 2 and the member is unmarked;
     // null when the module records no memory-safety rules, so the absence of the marker says nothing.
     public bool? RequiresUnsafe { get; init; }

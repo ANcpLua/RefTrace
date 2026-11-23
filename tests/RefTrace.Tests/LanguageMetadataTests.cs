@@ -33,6 +33,9 @@ public sealed class LanguageMetadataTests
             Assert.AreEqual("public System.Object Value { get:public; }", union.Members.Single(m => m.Name == "Value").Signature, name);
         }
         Assert.IsNull(Type(report, "Approved").UnionCases);
+        // A member provider supplies the cases through static Create methods; an in parameter is still the value type.
+        CollectionAssert.AreEqual(new[] { Namespace + "Approved", Namespace + "Declined" }, Type(report, "ProvidedOutcome").UnionCases!.ToArray());
+        CollectionAssert.AreEqual(new[] { "System.Int32", "System.String" }, Type(report, "Measurement").UnionCases!.ToArray());
     }
 
     [TestMethod]
@@ -68,6 +71,13 @@ public sealed class LanguageMetadataTests
         Assert.IsTrue(implementation.IsStatic);
         Assert.IsNull(implementation.Receiver);
         Assert.AreEqual(Namespace + "Buffer", implementation.Parameters.Single().Type);
+
+        // A generic block shows its own type parameter and constraint, not the grouping type's $T0.
+        var generic = Type(report, "ListExtensions").Members.Single(m => m is { Name: "FirstOrNull", Kind: "property" });
+        Assert.AreEqual("T", generic.Type);
+        Assert.AreEqual("T", generic.ExtensionGenericParameters!.Single().Name);
+        CollectionAssert.AreEqual(new[] { "class" }, generic.ExtensionGenericParameters!.Single().Constraints.ToArray());
+        Assert.StartsWith("extension<T>(System.Collections.Generic.List`1<T> list) where T : class public T FirstOrNull", generic.Signature);
     }
 
     [TestMethod]
@@ -100,6 +110,9 @@ public sealed class LanguageMetadataTests
         Assert.Contains("'Name' (System.String)", note);
         Assert.Contains("TypeLoadException", note);
         Assert.AreEqual("sequential", Type(report, "Outcome").Layout);
+        Assert.Contains("a value type with auto layout", Type(report, "AutoHolder").Notes.Single());
+        Assert.Contains("holds field 'Inner' of RefTrace.LanguageFixture.Wrapper, which holds field 'Name' of RefTrace.LanguageFixture.Named, which is a reference type",
+            Type(report, "DeepHolder").Notes.Single());
     }
 
     [TestMethod]
