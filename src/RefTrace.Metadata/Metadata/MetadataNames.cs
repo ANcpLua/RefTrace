@@ -66,15 +66,13 @@ internal sealed class MetadataNames(MetadataReader reader) : ISignatureTypeProvi
         var type = metadata.GetTypeDefinition(handle);
         var declaring = type.GetDeclaringType();
         if (!declaring.IsNil) return Type(declaring) + "+" + metadata.GetString(type.Name);
-        var ns = metadata.GetString(type.Namespace);
-        return string.IsNullOrEmpty(ns) ? metadata.GetString(type.Name) : ns + "." + metadata.GetString(type.Name);
+        return PeMetadata.Qualified(metadata.GetString(type.Namespace), metadata.GetString(type.Name));
     }
     public string GetTypeFromReference(MetadataReader metadata, TypeReferenceHandle handle, byte rawTypeKind)
     {
         var type = metadata.GetTypeReference(handle);
         if (type.ResolutionScope.Kind == HandleKind.TypeReference) return Type(type.ResolutionScope) + "+" + metadata.GetString(type.Name);
-        var ns = metadata.GetString(type.Namespace);
-        return string.IsNullOrEmpty(ns) ? metadata.GetString(type.Name) : ns + "." + metadata.GetString(type.Name);
+        return PeMetadata.Qualified(metadata.GetString(type.Namespace), metadata.GetString(type.Name));
     }
     public string GetTypeFromSpecification(MetadataReader metadata, object? genericContext, TypeSpecificationHandle handle, byte rawTypeKind)
         => metadata.GetTypeSpecification(handle).DecodeSignature(this, genericContext);

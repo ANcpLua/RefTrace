@@ -1,19 +1,13 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using RefTrace.Cli;
 
 namespace RefTrace.Tests;
 
 [TestClass]
 public sealed class CliInputTests(TestContext context)
 {
-    private async Task<(int Exit, string Output, string Error)> Run(params string[] arguments)
-    {
-        await using var output = new StringWriter();
-        await using var error = new StringWriter();
-        var exit = await CliApplication.RunAsync(arguments, output, error, context.CancellationToken);
-        return (exit, output.ToString(), error.ToString());
-    }
+    private Task<(int Exit, string Output, string Error)> Run(params string[] arguments)
+        => Fixtures.RunCliAsync(context, arguments);
 
     [TestMethod]
     public async Task Packages_DefaultIsCompactAndFiltersComposeWithAssetDetails()

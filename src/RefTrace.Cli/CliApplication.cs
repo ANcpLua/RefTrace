@@ -48,7 +48,7 @@ public static partial class CliApplication
         packagesCommand.SetAction((parse, token) => ExecuteAsync(parse.GetValue(json), "packages", async () =>
         {
             var graph = await ReadGraphAsync(parse.GetValue(packagesFile)!, parse.GetValue(packagesTarget), token).ConfigureAwait(false);
-            var direct = graph.Edges.Where(e => e.From == graph.RootId).Select(e => e.To).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var direct = DirectDependencyIds(graph);
             var assetPaths = parse.GetValue(includeAssets);
             var report = new PackageReport(graph.SourcePath, graph.Target,
                 graph.Nodes.Where(n => n.Kind == "package"
@@ -338,9 +338,12 @@ public static partial class CliApplication
         => output.WriteLine(JsonSerializer.Serialize(new ReportEnvelope<T>(2, kind, data),
             RefTraceJsonContext.Default.Options.GetTypeInfo<ReportEnvelope<T>>()));
 
+    internal static HashSet<string> DirectDependencyIds(DependencyGraph graph)
+        => graph.Edges.Where(e => e.From == graph.RootId).Select(e => e.To).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
     private static string RenderGraph(DependencyGraph graph)
     {
-        var direct = graph.Edges.Where(e => e.From == graph.RootId).Select(e => e.To).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var direct = DirectDependencyIds(graph);
         List<string> lines =
         [
             $"Project: {graph.ProjectPath}", $"Target: {graph.Target}", $"Evidence: {graph.SourcePath}",

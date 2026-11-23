@@ -27,7 +27,7 @@ internal static class TerminalRenderer
                 break;
             case DependencyGraph graph:
                 Evidence(console, graph.SourcePath, graph.Target);
-                var direct = graph.Edges.Where(e => e.From == graph.RootId).Select(e => e.To).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var direct = CliApplication.DirectDependencyIds(graph);
                 var nodes = Table("Scope", "Kind", "Dependency", "Version");
                 foreach (var node in graph.Nodes.Where(n => n.Id != graph.RootId))
                     nodes.AddRow(Text(direct.Contains(node.Id) ? "direct" : "transitive"), Text(node.Kind), Text(node.Id), Text(node.Version));

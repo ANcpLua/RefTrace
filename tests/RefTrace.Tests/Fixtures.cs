@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json.Nodes;
+using RefTrace.Cli;
 using RefTrace.Core;
 
 namespace RefTrace.Tests;
@@ -50,5 +51,13 @@ internal static class Fixtures
         var json = JsonNode.Parse(Assets)!.AsObject();
         change(json);
         return json.ToJsonString();
+    }
+
+    internal static async Task<(int Exit, string Output, string Error)> RunCliAsync(TestContext context, params string[] arguments)
+    {
+        await using var output = new StringWriter();
+        await using var error = new StringWriter();
+        var exit = await CliApplication.RunAsync(arguments, output, error, context.CancellationToken);
+        return (exit, output.ToString(), error.ToString());
     }
 }

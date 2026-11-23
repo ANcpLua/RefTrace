@@ -5,6 +5,8 @@ namespace RefTrace.Metadata;
 
 internal static class PeMetadata
 {
+    public static string Qualified(string ns, string name) => ns.Length == 0 ? name : ns + "." + name;
+
     public static IReadOnlyDictionary<string, string?> AssemblyProperties(MetadataReader reader)
     {
         var names = new MetadataNames(reader);

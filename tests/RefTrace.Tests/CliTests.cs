@@ -13,12 +13,8 @@ public sealed class CliTests(TestContext context)
         return path;
     }
 
-    private async Task<(int Exit, string Output, string Error)> RunAsync(params string[] args)
-    {
-        await using var output = new StringWriter();
-        await using var error = new StringWriter();
-        return (await CliApplication.RunAsync(args, output, error, context.CancellationToken), output.ToString(), error.ToString());
-    }
+    private Task<(int Exit, string Output, string Error)> RunAsync(params string[] args)
+        => Fixtures.RunCliAsync(context, args);
 
     [TestMethod]
     public async Task Assets_Json_HasVersionedSchemaAndGraphEvidence()
