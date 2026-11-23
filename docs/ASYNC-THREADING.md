@@ -705,6 +705,26 @@ generation after `Set`, and a failed flush still disposing once on both disposal
 five passed with default compilation and again with `runtime-async=on`. The checks lived in a
 throwaway directory and are not kept.
 
+### Runtime async in RefTrace, decided 2026-11-23
+
+`Directory.Build.props` sets `<Features>$(Features);runtime-async=on</Features>` for every
+project. The decision rests on these observations on SDK 11.0.100 (Roslyn 5.12.0), each
+build forced into a separate artifacts directory:
+
+| Evidence | Without the feature | With `runtime-async=on` |
+| --- | --- | --- |
+| Production methods with `AsyncStateMachineAttribute` and `IAsyncStateMachine` types (Build, Cli, Runtime) | 7 + 13 + 3 | 0 |
+| Production methods with `MethodImplAttributes.Async` (`0x2000`) | 0 | 7 + 13 + 3 |
+| Same counts in the runtime fixture and the test assembly | 1 and 50 state machines | 1 and 50 `0x2000` methods, no state machine |
+| `UseRuntimeAsync=true` alone (RefTrace.Build) | 7 state machines | not applicable: unchanged lowering |
+| `make test` equivalent on macOS ARM64 | 156 passed | 156 passed |
+
+The counts come from a metadata scan of the built assemblies outside RefTrace: method
+implementation flags, `AsyncStateMachineAttribute` and `IAsyncStateMachine` implementations.
+The packaged tool built with the feature passed CI's smoke steps locally. Linux, macOS and
+Windows are covered by the CI run of the pull request that introduced the setting. No
+performance claim follows: nothing here measured time or allocations.
+
 [analyzer-package]: https://www.nuget.org/packages/Meziantou.Analyzer/3.0.317
 [analyzer-props]: https://github.com/meziantou/Meziantou.Analyzer/blob/0d0970fc06d68bc46210667b0eb0ee23c441e762/src/Meziantou.Analyzer.Pack/build/Meziantou.Analyzer.props
 [analyzer-defaults]: https://github.com/meziantou/Meziantou.Analyzer/blob/0d0970fc06d68bc46210667b0eb0ee23c441e762/src/Meziantou.Analyzer.Pack/configuration/default.editorconfig
