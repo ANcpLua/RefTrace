@@ -194,11 +194,13 @@ internal static class TerminalRenderer
                 foreach (var limit in audit.Limitations) Note(console, limit);
                 break;
             case ReviewReport review:
-                var reviewTable = Table("Package", "Current", "Selected", "Status");
+                var reviewTable = Table("Package", "Current", "Selected", "Status", "Publish age");
                 foreach (var package in review.Packages)
-                    reviewTable.AddRow(Text(package.Package), Text(package.Current), Text(package.Selected ?? "unknown"), Text(package.Status));
+                    reviewTable.AddRow(Text(package.Package), Text(package.Current), Text(package.Selected ?? "unknown"), Text(package.Status),
+                        Text(package.PublishAge is { } age ? age.Result + (age.AgeHours is { } hours ? $" ({hours.ToString(CultureInfo.InvariantCulture)} h)" : "") : ""));
                 console.Write(reviewTable);
-                Note(console, $"{review.PackageCount} packages; {review.UpdateCount} newer candidates; {review.FailureCount} incomplete.");
+                Note(console, $"{review.PackageCount} packages; {review.UpdateCount} newer candidates; {review.YoungerThanMinimumCount} younger than the minimum publish age; {review.FailureCount} incomplete.");
+                Note(console, CliApplication.DescribeMinimumPublishAge(review.MinimumPublishAge));
                 Note(console, "Evidence: " + review.ReportPath);
                 break;
             case ErrorReport error:

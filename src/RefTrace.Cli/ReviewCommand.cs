@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.CommandLine;
 using RefTrace.Build;
@@ -7,9 +8,9 @@ namespace RefTrace.Cli;
 
 internal sealed record ReviewInputs(string Root, IReadOnlyList<ProjectInput> Projects);
 internal sealed record ReviewPackage(string Package, string Current, string? Selected, bool Direct,
-    bool HasUpdate, string Status, string EvidenceDirectory, string? Error);
+    bool HasUpdate, string Status, string EvidenceDirectory, string? Error, PublishAgeCheck? PublishAge = null);
 internal sealed record ReviewReport(string Root, string ReportPath, int PackageCount, int UpdateCount,
-    int FailureCount, IReadOnlyList<ReviewPackage> Packages);
+    int FailureCount, IReadOnlyList<ReviewPackage> Packages, PublishAgeSetting MinimumPublishAge, int YoungerThanMinimumCount);
 
 public static partial class CliApplication
 {
@@ -38,8 +39,10 @@ public static partial class CliApplication
             var report = await ReviewAsync(parse.GetValue(input)!, parse.GetValue(folder), parse.GetValue(catalog),
                 parse.GetValue(offline), parse.GetValue(refresh), parse.GetValue(package), parse.GetValue(probes), token).ConfigureAwait(false);
             return (report, report.FailureCount == 0 ? 0 : 1,
-                $"{report.PackageCount} packages; {report.UpdateCount} newer candidates; {report.FailureCount} incomplete.\nEvidence: {report.ReportPath}\n"
-                + string.Join(Environment.NewLine, report.Packages.Select(p => $"{p.Package}: {p.Current} -> {p.Selected ?? "unknown"} ({p.Status})")));
+                $"{report.PackageCount} packages; {report.UpdateCount} newer candidates; {report.YoungerThanMinimumCount} younger than the minimum publish age; {report.FailureCount} incomplete.\n"
+                + $"{DescribeMinimumPublishAge(report.MinimumPublishAge)}\nEvidence: {report.ReportPath}\n"
+                + string.Join(Environment.NewLine, report.Packages.Select(p => $"{p.Package}: {p.Current} -> {p.Selected ?? "unknown"} ({p.Status})"
+                    + (p.PublishAge is { Result: "younger-than-minimum" } age ? $"; published {age.Published}, {age.AgeHours?.ToString(CultureInfo.InvariantCulture)} h before collection, minimum {age.MinimumHours} h" : ""))));
         }, output, error, parse.GetValue(plain)));
         root.Subcommands.Add(command);
     }
@@ -57,6 +60,7 @@ public static partial class CliApplication
         var folder = output is null ? Path.Combine(root, "artifacts", "package-audit", "review-" + Guid.NewGuid().ToString("N")) : Path.GetFullPath(output);
         if (Directory.Exists(folder) || File.Exists(folder))
             throw new InspectionException("output-exists", "Choose a new evidence directory for this review.", folder);
+        var publishAge = PublishAgePolicy.Load(root);
         var backend = Path.Combine(Path.GetDirectoryName(typeof(CliApplication).Assembly.Location)!, "audit");
         if (!File.Exists(Path.Combine(backend, "reftrace_audit", "__main__.py")))
             throw new InspectionException("tool-unavailable", "The installed RefTrace package is missing its review collector.", backend);
@@ -78,18 +82,31 @@ public static partial class CliApplication
         var stream = File.OpenRead(reportPath);
         await using var streamLifetime = stream.ConfigureAwait(false);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: token).ConfigureAwait(false);
-        var packages = document.RootElement.GetProperty("packages").EnumerateArray().Select(row =>
+        return Summarize(root, reportPath, folder, document.RootElement, publishAge);
+    }
+
+    internal static ReviewReport Summarize(string root, string reportPath, string folder, JsonElement report, PublishAgePolicy publishAge)
+    {
+        var collectedAt = DateTimeOffset.Parse(report.GetProperty("collectedAt").GetString()!, CultureInfo.InvariantCulture);
+        var packages = report.GetProperty("packages").EnumerateArray().Select(row =>
         {
             var name = row.GetProperty("package").GetString()!;
             var current = row.GetProperty("current").GetString()!;
             var selected = row.TryGetProperty("catalog", out var release) ? release.GetProperty("selected").GetString() : null;
-            return new ReviewPackage(name, current, selected, row.GetProperty("direct").GetBoolean(),
-                selected is not null && release.GetProperty("selection").GetString() != "current",
+            var hasUpdate = selected is not null && release.GetProperty("selection").GetString() != "current";
+            return new ReviewPackage(name, current, selected, row.GetProperty("direct").GetBoolean(), hasUpdate,
                 row.GetProperty("status").GetString()!, Path.Combine(folder, name, current),
-                row.TryGetProperty("error", out var failure) ? failure.GetString() : null);
+                row.TryGetProperty("error", out var failure) ? failure.GetString() : null,
+                hasUpdate ? publishAge.Check(name, row.TryGetProperty("selectedPublished", out var published) ? published.GetString() : null, collectedAt) : null);
         }).ToArray();
         return new(root, reportPath, packages.Length,
             packages.Count(p => p.HasUpdate),
-            packages.Count(p => p.Status is "failed" or "incomplete-source"), packages);
+            packages.Count(p => p.Status is "failed" or "incomplete-source"), packages, publishAge.Setting,
+            packages.Count(p => p.PublishAge?.Result == "younger-than-minimum"));
     }
+
+    internal static string DescribeMinimumPublishAge(PublishAgeSetting setting) => setting.SourceName is null
+        ? $"Minimum publish age: not applicable; {setting.Source} is not an enabled package source in the NuGet configuration."
+        : $"Minimum publish age for {setting.Source} (source '{setting.SourceName}'): {setting.MinimumHours} h"
+            + (setting.ExceptionPatterns.Count == 0 ? "." : $"; exceptions: {string.Join(", ", setting.ExceptionPatterns)}.");
 }

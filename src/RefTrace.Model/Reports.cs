@@ -22,6 +22,10 @@ public sealed record PolicyViolation(string Pattern, DependencyNode Dependency, 
 public sealed record PolicyReport(string SourcePath, string Target, bool Passed,
     IReadOnlyList<PolicyViolation> Violations, IReadOnlyList<string> UnresolvedDependencies);
 
+public sealed record PublishAgeSetting(string Source, string? SourceName, int MinimumHours,
+    IReadOnlyList<string> ExceptionPatterns, IReadOnlyList<string> ConfigFiles);
+public sealed record PublishAgeCheck(string Result, string? Published, double? AgeHours, int MinimumHours, string? ExceptionPattern);
+
 public sealed record AssemblyIdentity(string Name, string Version, string? Culture, string? PublicKeyToken);
 public sealed record ApiParameter(string Name, string Type, string Passing, bool Optional, string? DefaultValue);
 public sealed record ApiGenericParameter(string Name, IReadOnlyList<string> Constraints);

@@ -57,7 +57,8 @@ class ReviewTests(unittest.TestCase):
                     raise AuditError("package unavailable")
                 if url.endswith("/index.json"):
                     return b'{"versions":["1.0.0","2.0.0","3.0.0"]}'
-                return json.dumps({"listed": not any(url.endswith(f"/{v}.json") for v in unlisted)}).encode()
+                return json.dumps({"listed": not any(url.endswith(f"/{v}.json") for v in unlisted),
+                                   "published": "2026-11-20T00:00:00+00:00"}).encode()
 
             def versions(_ref, arguments):
                 available = json.loads(Path(arguments[1]).read_text())["versions"]
@@ -93,6 +94,8 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual("2.0.0", row["catalog"]["selected"])
         self.assertEqual(["3.0.0"], row["excludedUnlisted"])
         self.assertEqual("catalogued", row["status"])
+        # The listed candidate's registration date feeds the minimum publish age check.
+        self.assertEqual("2026-11-20T00:00:00+00:00", row["selectedPublished"])
 
     def test_failed_coordinate_does_not_hide_successful_package_report(self):
         code, report = self.review([self.row("Broken"), self.row("Working")], unavailable=["broken"])
