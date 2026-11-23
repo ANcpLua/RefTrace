@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.0
+
+* Add `ref version`. It prints the same line as `ref --version`, the package version and the commit it was built
+  from, by running that System.CommandLine option.
+
 ## 0.10.0
 
 * The version carries no preview suffix any more. The suffix dated from the time on .NET 11 release candidates;

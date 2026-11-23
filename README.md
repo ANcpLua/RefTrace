@@ -24,6 +24,7 @@ dotnet tool install RefTrace
 ```
 
 `ref help` gives the overview. `ref help assembly` or `ref assembly --help` shows one command's arguments and options.
+`ref version` or `ref --version` prints the installed version and the commit it was built from, as one line of text.
 
 ## Which command answers which question
 

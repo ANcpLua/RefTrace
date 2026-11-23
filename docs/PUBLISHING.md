@@ -58,7 +58,7 @@ so the repository stores no long-lived NuGet API key.
    git tag v<version> <full SHA> && git push origin v<version>
    gh release create v<version> --verify-tag --title "RefTrace <version>" --notes-file <file with the changelog section>
    ```
-7. **Install it.** `dotnet tool update --global RefTrace`, then `ref --version` prints the version and the released
+7. **Install it.** `dotnet tool update --global RefTrace`, then `ref version` prints the version and the released
    commit.
 
 A version with a suffix such as `-preview.1` is a prerelease: add `--prerelease` to `gh release create` and to the

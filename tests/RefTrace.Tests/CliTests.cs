@@ -127,7 +127,7 @@ public sealed class CliTests(TestContext context)
         Assert.Contains("Usage: ref <command>", result.Output);
         Assert.Contains("Details: ref help <command>", result.Output);
         Assert.DoesNotContain("RefTrace.Cli", result.Output);
-        Assert.IsLessThanOrEqualTo(20, result.Output.Split('\n').Length);
+        Assert.IsLessThanOrEqualTo(21, result.Output.Split('\n').Length);
     }
 
     [TestMethod]
@@ -169,6 +169,21 @@ public sealed class CliTests(TestContext context)
         var result = await RunAsync("--version", "--plain");
         Assert.AreEqual(2, result.Exit);
         Assert.Contains("cannot be combined", result.Error);
+    }
+
+    [TestMethod]
+    public async Task Version_CommandPrintsWhatTheOptionPrints()
+    {
+        var option = await RunAsync("--version");
+        var command = await RunAsync("version");
+        Assert.AreEqual(0, command.Exit);
+        Assert.AreEqual("", command.Error);
+        Assert.AreEqual(option.Output, command.Output);
+        Assert.AreNotEqual("", command.Output.Trim());
+        var extra = await RunAsync("version", "unexpected");
+        Assert.AreEqual(2, extra.Exit);
+        Assert.Contains("unexpected", extra.Error);
+        Assert.Contains("version", (await RunAsync("help")).Output);
     }
 
     [TestMethod]

@@ -312,7 +312,7 @@ RefTrace is not a vulnerability scanner; a passed dependency policy is not a sec
 
 ```sh
 dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj -c Release -o artifacts/packages
-dotnet tool install RefTrace --version 0.10.0 --source ./artifacts/packages --tool-path ./artifacts/tools
+dotnet tool install RefTrace --version 0.11.0 --source ./artifacts/packages --tool-path ./artifacts/tools
 ./artifacts/tools/ref --help
 ```
 

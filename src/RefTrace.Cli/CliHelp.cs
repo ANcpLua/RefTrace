@@ -38,6 +38,11 @@ internal static class CliHelp
             });
         });
         root.Subcommands.Add(help);
+        // System.CommandLine's --version prints the informational version of the entry assembly: the package
+        // version and the commit. The command runs that option, as help runs --help.
+        var version = new Command("version", "Show the version and the commit it was built from.");
+        version.SetAction(parse => root.Parse(["--version"]).Invoke(parse.InvocationConfiguration));
+        root.Subcommands.Add(version);
     }
 
     private static void WriteOverview(RootCommand root, TextWriter output)
