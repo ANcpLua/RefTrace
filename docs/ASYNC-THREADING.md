@@ -191,6 +191,9 @@ capture can hang the calling process (`ref` or a test host) or trigger the
 process-group signals above. On the 11.0.0 source they kill descendants first and
 use the fixed reaping loop; the tree-kill tests pass on SDK 11.0.100 in CI on macOS,
 Linux and Windows ([CI run][ci-ga]).
+Since 2026-11-23 the AOT publish tree-kill test runs in parallel with the rest of the
+suite again; the RC3 workaround is gone (see the
+[transitive review](TRANSITIVE-REVIEW.md#regression-checks-and-style)).
 RefTrace does not choose either behavior. Its 2026-10-29 tree-kill tests passed on
 macOS, which shows the hang is not deterministic, not that it cannot happen. Check a
 hang after macOS cancellation or timeout against this defect first, and recheck both

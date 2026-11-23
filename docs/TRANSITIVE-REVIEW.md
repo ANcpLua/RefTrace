@@ -155,6 +155,12 @@ methods that exercise process-tree cleanup now run outside parallel test executi
 This is a scheduling mitigation for the observed runtime behavior, not a replacement
 for the runtime's process implementation or a claim that its underlying issue is fixed.
 
+> 2026-11-23: .NET 11.0.0 carries the macOS fix (see the [async guide](ASYNC-THREADING.md)).
+> `Run_CancellationOrDeadline_TerminatesTheProcessTree` runs in parallel again on SDK
+> 11.0.100: 30 consecutive runs of `AotPublishInspectorTests` (14 tests, 15–16 s each) and
+> 10 full-suite runs (156 tests, 25–26 s each) passed on macOS ARM64 without a stall. The
+> other two methods keep `[DoNotParallelize]` for their own stated reasons.
+
 ## Local validation
 
 - `make build`: zero warnings and errors with all five accepted overrides.
