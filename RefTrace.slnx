@@ -9,6 +9,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/RefTrace.AnalyzerAssetsFixture/RefTrace.AnalyzerAssetsFixture.csproj" />
+    <Project Path="tests/RefTrace.LanguageFixture/RefTrace.LanguageFixture.csproj" />
     <Project Path="tests/RefTrace.RuntimeFixture/RefTrace.RuntimeFixture.csproj" />
     <Project Path="tests/RefTrace.Tests/RefTrace.Tests.csproj" />
   </Folder>

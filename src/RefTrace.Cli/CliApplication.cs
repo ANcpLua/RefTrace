@@ -363,15 +363,27 @@ public static partial class CliApplication
             $"Informational version: {report.InformationalVersion ?? "not recorded"}",
             $"MVID: {report.ModuleVersionId}",
             $"Reference assembly: {report.IsReferenceAssembly}",
+            $"Memory-safety rules: {report.MemorySafetyRulesVersion?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "not recorded"}",
             $"Evidence: {report.SourcePath}",
             "Static assembly references:",
             .. report.References.Select(r => $"  {r.Name}, Version={r.Version}, PublicKeyToken={r.PublicKeyToken ?? "none"}")
         ];
         foreach (var type in report.Types)
         {
-            lines.Add($"Type: {type.Name}");
+            lines.Add($"Type: {DescribeType(type)}");
             lines.AddRange(type.Members.Select(m => $"  {m.Signature}"));
+            lines.AddRange(type.Notes.Select(note => $"  note: {note}"));
         }
         return string.Join(Environment.NewLine, lines);
+    }
+
+    // Kind, modifiers and the C# 15 / .NET 11 type facts that metadata records beyond the members.
+    internal static string DescribeType(ApiType type)
+    {
+        var text = string.Join(" ", [.. type.Modifiers, type.Kind, type.Name]);
+        if (type.UnionCases is { } cases) text += "; union of " + (cases.Count == 0 ? "no public single-parameter constructors" : string.Join(", ", cases));
+        if (type.ClosedDerivedTypes is { } derived) text += "; direct subtypes: " + string.Join(", ", derived);
+        if (type.Layout is { } layout && (type.Kind, layout) is not (("class", "auto") or ("struct", "sequential"))) text += "; layout: " + layout;
+        return text;
     }
 }

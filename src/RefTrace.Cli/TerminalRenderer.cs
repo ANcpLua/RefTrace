@@ -82,6 +82,7 @@ internal static class TerminalRenderer
                 identity.AddRow("Informational version", Markup.Escape(assembly.InformationalVersion ?? "not recorded"));
                 identity.AddRow("MVID", assembly.ModuleVersionId);
                 identity.AddRow("Reference assembly", assembly.IsReferenceAssembly ? "yes" : "no");
+                identity.AddRow("Memory-safety rules", assembly.MemorySafetyRulesVersion?.ToString(CultureInfo.InvariantCulture) ?? "not recorded");
                 console.Write(identity);
                 if (assembly.AssemblyMetadata.Count != 0)
                 {
@@ -96,9 +97,11 @@ internal static class TerminalRenderer
                 console.Write(references);
                 foreach (var type in assembly.Types)
                 {
-                    var tree = new Tree(Text(type.Name));
+                    var tree = new Tree(Text(CliApplication.DescribeType(type)));
                     foreach (var member in type.Members)
                         tree.AddNode(Text(member.Signature));
+                    foreach (var note in type.Notes)
+                        tree.AddNode(new Text("note: " + note, new Style(foreground: Color.Yellow)));
                     console.Write(tree);
                 }
                 if (assembly.ForwardedTypes.Count != 0)

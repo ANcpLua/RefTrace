@@ -31,9 +31,25 @@ public sealed record ApiParameter(string Name, string Type, string Passing, bool
 public sealed record ApiGenericParameter(string Name, IReadOnlyList<string> Constraints);
 public sealed record ApiMember(string Name, string Kind, string Accessibility, bool IsStatic,
     string Type, IReadOnlyList<ApiParameter> Parameters, IReadOnlyList<ApiGenericParameter> GenericParameters,
-    IReadOnlyList<string> Accessors, string Signature);
+    IReadOnlyList<string> Accessors, string Signature)
+{
+    // The receiver of a C# 14 extension member; null for ordinary members.
+    public ApiParameter? Receiver { get; init; }
+    // [RequiresUnsafe]: true; false when the module uses memory-safety rules 2 and the member is unmarked;
+    // null when the module records no memory-safety rules, so the absence of the marker says nothing.
+    public bool? RequiresUnsafe { get; init; }
+}
 public sealed record ApiType(string Name, string Kind, IReadOnlyList<ApiGenericParameter> GenericParameters,
-    string? BaseType, IReadOnlyList<string> Interfaces, IReadOnlyList<ApiMember> Members);
+    string? BaseType, IReadOnlyList<string> Interfaces, IReadOnlyList<ApiMember> Members)
+{
+    public IReadOnlyList<string> Modifiers { get; init; } = [];
+    // Direct subtypes recorded by IsClosedTypeAttribute; null unless the type is closed.
+    public IReadOnlyList<string>? ClosedDerivedTypes { get; init; }
+    // Case types of a [Union] type; null unless the type is a union.
+    public IReadOnlyList<string>? UnionCases { get; init; }
+    public string? Layout { get; init; }
+    public IReadOnlyList<string> Notes { get; init; } = [];
+}
 public sealed record AssemblyReport(
     string SourcePath, AssemblyIdentity Identity, string ModuleVersionId,
     string? TargetFramework, string? FileVersion, string? InformationalVersion,
@@ -43,6 +59,7 @@ public sealed record AssemblyReport(
     public IReadOnlyList<string> ForwardedTypes { get; init; } = [];
     public IReadOnlyDictionary<string, string?> AssemblyMetadata { get; init; } = new Dictionary<string, string?>();
     public IReadOnlyList<string> DebugDirectoryKinds { get; init; } = [];
+    public int? MemorySafetyRulesVersion { get; init; }
 }
 
 public sealed class InspectionException(string code, string message, string? input = null,

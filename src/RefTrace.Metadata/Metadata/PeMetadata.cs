@@ -21,4 +21,19 @@ internal static class PeMetadata
         }
         return new ReadOnlyDictionary<string, string?>(values);
     }
+
+    // C# 15's updated memory-safety rules record their version on the module (2 for SDK 11.0.100).
+    public static int? MemorySafetyRulesVersion(MetadataReader reader)
+    {
+        var names = new MetadataNames(reader);
+        foreach (var handle in reader.GetModuleDefinition().GetCustomAttributes())
+        {
+            var attribute = reader.GetCustomAttribute(handle);
+            if (names.Method(attribute.Constructor).Type != "System.Runtime.CompilerServices.MemorySafetyRulesAttribute") continue;
+            var blob = reader.GetBlobReader(attribute.Value);
+            if (blob.ReadUInt16() != 1) throw new BadImageFormatException("Invalid memory-safety rules attribute prolog.");
+            return blob.ReadInt32();
+        }
+        return null;
+    }
 }

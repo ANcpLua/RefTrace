@@ -141,6 +141,40 @@ does not establish AOT compatibility.
   as methods. This is metadata evidence, not a binary/source compatibility verdict.
   Inherited members, nullable annotations and other custom-attribute semantics are not
   expanded. Names use metadata generic arity; type names do not encode assembly scope.
+* **C# 15 and .NET 11 metadata:** checked against assemblies compiled by SDK 11.0.100
+  (`tests/RefTrace.LanguageFixture`).
+  * Types carry `modifiers` (`abstract`, `sealed`, `static`, `closed`, `readonly`) and
+    `layout` (`auto`, `sequential`, `explicit`, or `extended CStruct`/`extended CUnion`).
+  * A `closed` class is abstract in metadata and carries `IsClosedTypeAttribute`, whose
+    `DerivedTypes` lists the direct subtypes; RefTrace reports them as `closedDerivedTypes`.
+    Closure is not transitive, and metadata records nothing on the subtypes themselves.
+  * A type with `UnionAttribute` reports `unionCases`: the parameter types of its public
+    single-parameter constructors, which the compiler treats as the cases. A `union`
+    declaration and a hand-written `[Union]` type are reported alike; metadata does not
+    record which one the source used. Cases supplied through a member provider
+    (`IUnionMembers`) are not read.
+  * Members of a C# 14 extension block appear on the static class with a `receiver` and an
+    `extension(...)` prefix in `signature`, including extension properties and indexers. The
+    compiler's grouping and marker types (`<G>$…`, `<M>$…`) are not listed. The static
+    implementation methods that compiled callers bind to, such as `get_IsEmpty(Buffer)`,
+    remain listed as methods.
+  * An extended-layout type whose instance fields hold a reference, directly or in a value
+    type of the same assembly, gets a note: the runtime refuses to load it (observed as
+    `TypeLoadException` on .NET 11.0.0). A field whose type is a value type from another
+    assembly or an unconstrained type parameter is reported as undecidable from this
+    assembly's metadata.
+  * `memorySafetyRulesVersion` comes from the module's `MemorySafetyRulesAttribute` (2 under
+    C# 15's updated rules). Under version 2 each member reports `requiresUnsafe`, true when it
+    carries `RequiresUnsafeAttribute`, and its signature shows `unsafe`. Without module rules
+    `requiresUnsafe` is absent: an unmarked member then says nothing about safety. .NET
+    11.0.0's reference assemblies use version 2 and mark, for example, `Marshal.Copy`; the
+    implementation in `System.Private.CoreLib` records no rules and no marker.
+  * A runtime-async method and a state-machine async method have the same declared
+    signature. Metadata records the difference (`MethodImplAttributes.Async`, `0x2000`,
+    versus `AsyncStateMachineAttribute`), but it is implementation, not API, and `assembly`
+    does not print it.
+  * A method that is virtual and final in metadata, such as an implicit interface
+    implementation, is not printed as `virtual`.
 * **Runtime observation:** `processes` lists processes advertising .NET diagnostics.
   `runtime` attaches to an explicitly chosen PID, observes loader events for `--seconds`,
   then requests CLR rundown so previously loaded assemblies can also be reported.

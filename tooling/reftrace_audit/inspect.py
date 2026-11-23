@@ -99,7 +99,8 @@ def compare(before: Path, after: Path, output: Path) -> list[str]:
         report = json.loads(path.read_text())
         result = set()
         for entry in report["types"]:
-            header = {key: entry.get(key) for key in ("name", "kind", "baseType", "interfaces", "genericParameters")}
+            header = {key: entry.get(key) for key in ("name", "kind", "modifiers", "baseType", "interfaces", "genericParameters",
+                                                      "closedDerivedTypes", "unionCases", "layout")}
             result.add("type " + json.dumps(header, sort_keys=True, separators=(",", ":")))
             result.update(f'{entry["name"]}::{member["signature"]}' for member in entry["members"])
         return result
