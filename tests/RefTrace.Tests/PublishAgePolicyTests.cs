@@ -65,6 +65,17 @@ public sealed class PublishAgePolicyTests(TestContext context)
     }
 
     [TestMethod]
+    public void Load_ReadsTheLargestMinimumNuGetAccepts()
+    {
+        // NuGet accepts whole hours up to TimeSpan.MaxValue.TotalHours, 256204778, and rejects more.
+        var policy = Load("""
+            <configuration><packageSources><clear /><add key="nuget.org" value="https://api.nuget.org/v3/index.json" minPublishAgeHours="256204778" /></packageSources></configuration>
+            """);
+        Assert.AreEqual(256_204_778, policy.Setting.MinimumHours);
+        Assert.AreEqual("younger-than-minimum", policy.Check("Example", "2026-11-10T00:00:00+00:00", CollectedAt).Result);
+    }
+
+    [TestMethod]
     public void Check_WithoutAMinimumOrWithoutTheSource_SaysSo()
     {
         var unset = Load("""

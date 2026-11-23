@@ -42,6 +42,7 @@ public sealed class PublishAgePolicy
             .Where(item => item.IsEnabled && string.Equals(item.Source.TrimEnd('/'), source.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
             .MinBy(item => item.MinPublishAge);
         var items = new MinPublishAgeExceptionsProvider(settings).GetMinPublishAgeExceptionItems();
+        // NuGet accepts whole hours up to TimeSpan.MaxValue (256204778), which fits an int.
         return new(new PublishAgeSetting(source, configured?.Name, (int)(configured?.MinPublishAge.TotalHours ?? 0),
                 items.Select(item => item.Pattern).ToArray(), settings.GetConfigFilePaths().ToArray()),
             new MinPublishAgeExceptions(items));
