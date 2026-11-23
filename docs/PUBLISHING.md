@@ -1,39 +1,17 @@
-# Publishing setup
+# Publishing
 
-The workflow is `.github/workflows/publish.yml` in
-[`ANcpLua/RefTrace`](https://github.com/ANcpLua/RefTrace). It runs only when started manually.
+A release is the package **RefTrace** on nuget.org, the tag `v<version>` and a GitHub release with the changelog
+section of that version. The workflow `.github/workflows/publish.yml` in
+[`ANcpLua/RefTrace`](https://github.com/ANcpLua/RefTrace) pushes the package. It runs only when started manually.
 
-Before the first release:
+## Set up once
 
 1. In GitHub, create an environment named `release`.
-2. Add its `NUGET_USER` secret: `ANcpLua`, the NuGet profile name, not an email or an API key.
-3. Sign in at [NuGet Trusted Publishing](https://www.nuget.org/account/trustedpublishing)
-   and add a policy for that exact repository, workflow file `publish.yml`, and environment `release`.
-   Choose the NuGet account or organization that will own the package, with the appropriate
-   permission for publishing RefTrace (including its first version). Set the package pattern
-   to exactly `RefTrace`, keep permission to push new packages and versions, and disable
-   permission to unlist or relist versions.
-
-The workflow first builds, tests, packs and runs the packaged command. It then uses
-`NuGet/login` with GitHub's `id-token: write` permission to obtain a short-lived publishing
-key. There is no long-lived NuGet API key to save in the repository.
-
-The workflow version must match `Directory.Build.props`. Each new release needs a new
-version. Confirm the NuGet policy is in place before the first publishing run.
-
-Before publishing, try the installed tool using the README and record `git rev-parse HEAD`.
-If you find a problem, fix it and try a new preview version. A green CI run does not
-replace that product check.
-
-Start the publish workflow only after accepting the preview. Its `tested_commit` input
-must be the full SHA of that exact commit. The workflow rejects another commit and
-requires the latest cross-platform CI run for it to have succeeded. It then builds and
-runs the tests again before requesting a NuGet token.
-
-The public API is still evolving before the first release. There is no API-freeze
-baseline during this development phase.
-
-The policy values are:
+2. Add its `NUGET_USER` secret: `ANcpLua`, the NuGet profile name. It is neither an email address nor an API key.
+3. Sign in at [NuGet Trusted Publishing](https://www.nuget.org/account/trustedpublishing) and add a policy with the
+   values below. Choose the NuGet account or organization that will own the package. Set the package pattern to
+   exactly `RefTrace`, keep the permission to push new packages and versions, and turn the permission to unlist or
+   relist versions off.
 
 | Field | Value |
 | --- | --- |
@@ -42,8 +20,49 @@ The policy values are:
 | Workflow file | `publish.yml` |
 | Environment | `release` |
 
-The workflow's display name is not the workflow filename used by the policy.
+The policy names the workflow file; the workflow's display name plays no part. Step 3 needs the owner's NuGet
+sign-in. Steps 1 and 2 can be done with `gh`:
 
-The package includes its MIT license and third-party notices. When updating dependencies,
-review the packaged runtime assets and their license metadata, then update
-`THIRD-PARTY-NOTICES.md` and the original texts under `licenses/third-party`.
+```sh
+gh api -X PUT repos/ANcpLua/RefTrace/environments/release
+gh secret set NUGET_USER --env release --repo ANcpLua/RefTrace --body ANcpLua
+```
+
+The workflow uses `NuGet/login` with GitHub's `id-token: write` permission to obtain a short-lived publishing key,
+so the repository stores no long-lived NuGet API key.
+
+## Release a version
+
+1. **Version.** `Directory.Build.props` carries the version, `CHANGELOG.md` has its section, and the `version`
+   default in `publish.yml` matches. Each release needs a new version.
+2. **Try the product.** On the commit you want to release, pack the tool, install it from the local package as
+   [Package and try locally](REFERENCE.md#package-and-try-locally) shows, and run the commands of the README with
+   it. A green CI run does not replace this check. If you find a problem, fix it and start again with the new
+   commit. Record `git rev-parse HEAD`.
+3. **CI.** That commit is the head of `main`, and its latest "Build and test" run succeeded on every platform.
+4. **Publish.** Start the workflow with the version and the full SHA from step 2:
+
+   ```sh
+   gh workflow run publish.yml --ref main -f version=<version> -f tested_commit=<full SHA>
+   gh run watch "$(gh run list --workflow publish.yml --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
+   ```
+
+   The workflow rejects any other commit, requires the green CI run, then builds, tests, packs and runs the
+   packaged command again before it asks NuGet for a token.
+5. **Confirm.** The version appears in `https://api.nuget.org/v3-flatcontainer/reftrace/index.json`. NuGet validates
+   and indexes a new package first, which can take several minutes.
+6. **Tag and GitHub release.** Tag the released commit and publish the changelog section of the version as the
+   release notes. A version with a suffix such as `-preview.1` is a prerelease:
+
+   ```sh
+   git tag v<version> <full SHA> && git push origin v<version>
+   gh release create v<version> --verify-tag --title "RefTrace <version>" --notes-file <file with the changelog section> --prerelease
+   ```
+7. **Install it.** `dotnet tool update --global RefTrace --prerelease`, then `ref --version` prints the version and
+   the released commit.
+
+The public API is still evolving in the 0.x previews; there is no API-freeze baseline yet.
+
+The package includes its MIT license and third-party notices. When you update dependencies, review the packaged
+runtime assets and their license metadata, then update `THIRD-PARTY-NOTICES.md` and the original texts under
+`licenses/third-party`.

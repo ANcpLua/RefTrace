@@ -1,53 +1,115 @@
 # RefTrace
 
-Find where your .NET dependencies come from and what your app loads.
+`ref` answers questions about .NET code from evidence: the packages a project restored, the metadata and IL of a
+DLL, what a running process loaded, and whether a real Native AOT publish succeeds. It reads existing artifacts and
+runs nothing from the code it inspects. When the evidence does not support a conclusion, it says so.
 
-RefTrace helps you follow a package back to its source, look inside a DLL, and check
-a running app. It shows what it found and tells you when there is not enough information
-to draw a conclusion.
-
-Private preview development on .NET 11.
+It is made for coding agents and scripts first: every command has `--json` output with a versioned schema, typed
+error codes and a meaningful exit code. In a terminal, people get tables and trees.
 
 ## Install
 
-The first NuGet release is pending. Install the current source with the .NET 11 SDK (11.0.100, pinned in `global.json`):
-
 ```sh
-dotnet pack src/RefTrace.Cli -c Release -o artifacts/packages
-dotnet tool install --global RefTrace --version 0.10.0-preview.1 --source artifacts/packages
+dotnet tool install --global RefTrace --prerelease
 ref help
 ```
 
-After publication, install with `dotnet tool install --global RefTrace`.
-The package is named **RefTrace**; the command is **ref**.
-For an existing installation, replace `install` with `update`.
-
-`ref help` gives a short overview. Use `ref help assembly` or `ref assembly --help`
-for a command's arguments and options.
-
-## Find a dependency
+The package is **RefTrace**; the command is **ref**. It needs the .NET 11 runtime. Every version so far is a
+preview, hence `--prerelease`; `dotnet tool update --global RefTrace --prerelease` moves to a newer one. To pin the
+version per repository, install it into a tool manifest and call `dotnet tool run ref`:
 
 ```sh
-ref packages MyApp.csproj
-ref packages MyApp.csproj --direct
-ref why Some.Package MyApp.csproj
-ref check MyApp.csproj --forbid-package 'Unwanted.*'
+dotnet new tool-manifest
+dotnet tool install RefTrace --prerelease
 ```
 
-Inputs can be a project, a `.slnx` solution containing one .NET project, a directory
-containing one project, or a restored assets file.
-Leave the input out to use the current directory. RefTrace asks MSBuild where that
-project keeps its assets; it does not restore or build it. Ambiguous selections return
-the available choices. Use `--framework net11.0` for a specific restored target.
+`ref help` gives the overview. `ref help assembly` or `ref assembly --help` shows one command's arguments and options.
 
-Package output shows IDs, versions, and direct/transitive origin. Use `--package
-'NuGet.*'` to filter it and `--assets` to include compile, analyzer and runtime paths.
-Analyzer paths appear when the project sets `RestoreEnableAnalyzerAssets` (NuGet 8.0, SDK 11.0.100).
+## Which command answers which question
 
-Use `assets` for the full graph, including project references. To check a project boundary,
-use `--forbid-project '*Other.Tests.csproj'`. Quote patterns so your shell passes them through.
+| Question | Command | The answer rests on |
+| --- | --- | --- |
+| Which packages does this project resolve, and which of them directly? | `ref packages [input] [--direct] [--package 'glob'] [--assets]` | the restored `project.assets.json` |
+| Why is this package in the graph? | `ref why <dependency> [input]` | one shortest path from the root project |
+| What does the whole graph look like, project references included? | `ref assets [input]` | the same assets file |
+| Does the graph contain something it must not contain? | `ref check [input] --forbid-package 'glob' --forbid-project 'glob'` | the graph; exit 1 when a forbidden dependency is found |
+| Are newer package versions listed, and what changes with them? | `ref review [input] [--catalog-only] [--refresh] [--offline] [--package 'glob']` | NuGet release metadata, package bytes, declared API signatures |
+| What does this DLL contain, and what is the exact signature of this type? | `ref assembly <file> [--type 'Namespace.Type']` | metadata; the DLL is not loaded |
+| Does this DLL call reflection or dynamic code? | `ref reflection <file> [--fail-on-findings]` | method references in IL |
+| What points for or against Native AOT, and does a publish succeed? | `ref aot inspect <file>` and `ref aot publish <project> --rid <rid> --output <dir>` | declarations and annotations; a real publish |
+| Which assemblies did this process load? | `ref processes`, then `ref runtime --pid <pid> [--seconds <n>] [--modules]` | the process's diagnostics endpoint, for that time window |
+| Which SDK and compiler does this project select? | `ref sdk [input]` | the `global.json` context of the input directory |
 
-## Review package updates
+`[input]` is a project, a `.slnx` solution with one .NET project, a directory with one project, or a restored assets
+file; leave it out for the current directory. RefTrace asks MSBuild where the project keeps its assets. It does not
+restore or build; when the restore is missing or belongs to another project, it returns `restore-required` or
+`mismatched-assets` and you run `dotnet restore`. With several restored targets, add `--framework net11.0`. Quote
+glob patterns so the shell passes them through.
+
+## Read the result
+
+Add `--json` for one line of JSON, or `--plain` for unstyled text. Every JSON report has the same envelope:
+
+```json
+{"schemaVersion": 2, "kind": "packages", "data": {}}
+```
+
+Check `schemaVersion` and tolerate additional fields. A failure has `kind` `error`; its `data` carries a stable `code`
+such as `restore-required`, `ambiguous-project`, `ambiguous-target` or `file-not-found`, a message, and where they
+apply the failing `input` and the valid `candidates` to choose from. The
+[technical reference](https://github.com/ANcpLua/RefTrace/blob/main/docs/REFERENCE.md) lists every kind and code.
+
+| Exit code | Meaning |
+| --- | --- |
+| `0` | The inspection completed, the dependency path exists, or the policy passed |
+| `1` | A forbidden dependency was found, no path leads to the requested dependency, a publish failed, or a package review has incomplete evidence |
+| `2` | RefTrace could not complete the request or reach a reliable conclusion |
+
+Treat exit code 2 as "no answer", never as a pass. For `runtime`, exit code 0 also requires a complete observation;
+a partial one is returned with exit code 2.
+
+What a result establishes:
+
+- `packages`, `why`, `assets` and `check` describe the last restore of that project. A passed `check` is a statement
+  about the graph. RefTrace is no vulnerability scanner.
+- `assembly` and `reflection` read the file. A call that is present in a DLL may never run.
+- `aot inspect` gives you things to review; its assessment stays `not-established`. `aot publish` runs the project's
+  build with Native AOT enabled and warnings as errors, and its success holds for that configuration.
+- `runtime` reports what the process loaded inside the observation window.
+
+## Use it from a coding agent
+
+Put the cases your repository cares about into its `AGENTS.md`, for example:
+
+```markdown
+## Dependencies and binaries: ask `ref`
+
+- Read the real signature of an API before you rely on it:
+  `ref assembly <path to the DLL> --type '<metadata name of the type>' --json`
+- Before you add or raise a package: `ref review . --catalog-only --json`, then `ref why <package> --json`.
+- After `dotnet restore`, prove a boundary: `ref check --forbid-package 'Unwanted.*' --json` exits with 0.
+- A DLL that must stay free of reflection: `ref reflection <file> --fail-on-findings --json` exits with 0.
+- Exit code 2 means RefTrace reached no conclusion. Report that and fix the input it names.
+```
+
+Type names are metadata names: `+` joins nested types, and a backtick with the number of type parameters marks a
+generic type, as in ``System.Collections.Generic.List`1``.
+
+## Examples
+
+Find a dependency:
+
+```sh
+ref packages MyApp.csproj --direct
+ref packages MyApp.csproj --package 'NuGet.*' --assets
+ref why Some.Package MyApp.csproj
+ref check MyApp.csproj --forbid-package 'Unwanted.*' --forbid-project '*Other.Tests.csproj'
+```
+
+`--assets` adds compile, analyzer and runtime paths. Analyzer paths appear when the project sets
+`RestoreEnableAnalyzerAssets` (NuGet 8.0, SDK 11.0.100).
+
+Review package updates:
 
 ```sh
 ref review . --catalog-only
@@ -56,20 +118,14 @@ ref review MyApp.csproj --package 'NuGet.*' --refresh
 ref review MyApp.csproj --offline --json
 ```
 
-`review` accepts one project, a `.slnx` solution, or a repository containing several.
-A solution selects only its listed `.csproj`, `.fsproj`, and `.vbproj` entries, so
-unlisted examples and nested repositories are excluded. Project paths are relative
-to the solution file; solution folders are logical and do not change those paths.
-Repeated paths are reviewed once, and non-.NET entries such as `.esproj` are ignored.
-Malformed solutions and missing listed .NET projects produce actionable errors.
-Directory input still discovers projects recursively. It checks resolved
-versions against listed NuGet releases and saves a report under `artifacts/package-audit/`.
-A full review also collects package bytes, declared API signatures, and configured
-source/implementation probes. It reports candidates without editing dependency pins.
-The collector ships with `ref`; it needs uv and Python 3.14, plus `ilspycmd` for configured
-decompilation probes. See [package reviews](docs/PACKAGE-AUDIT.md) for details.
+`review` accepts one project, a `.slnx` solution or a repository with several projects. `--catalog-only` compares
+the resolved versions with the listed NuGet releases. Without it, the review also collects package bytes, declared
+API signatures and configured source probes, and saves a report under `artifacts/package-audit/`. It reports
+candidates and leaves your version pins as they are. `review` needs uv and Python 3.14 on the machine, plus
+`ilspycmd` for configured decompilation probes; see
+[package reviews](https://github.com/ANcpLua/RefTrace/blob/main/docs/PACKAGE-AUDIT.md).
 
-## Look inside a DLL
+Look inside a DLL:
 
 ```sh
 ref assembly MyLibrary.dll
@@ -77,67 +133,40 @@ ref assembly MyLibrary.dll --type 'MyNamespace.MyType'
 ref reflection MyLibrary.dll
 ```
 
-`assembly` shows versions, references, and other recorded details. With `--type`, it
-also reports declared public/protected signatures, including overload parameters,
-return types, generics, constructors, fields, events, and property accessors. `reflection` shows
-known reflection and dynamic-code calls worth reviewing. A call found in a DLL does not
-mean it ran. Neither command executes code from the DLL.
+`assembly` shows versions, references and other recorded details. With `--type` it adds the declared public and
+protected signatures: overloads, return types, generics, constructors, fields, events and property accessors.
 
-## Watch a running app
+Watch a running app:
 
 ```sh
 ref processes
 ref runtime --pid 12345 --seconds 1 --modules
 ```
 
-Choose a PID from the first command. The second shows assemblies observed in that process
-and their file paths. It reports the time window and whether collection completed.
-It cannot tell you what the app will load later.
-
-## Check Native AOT
+Check Native AOT, and see what an installed SDK contains:
 
 ```sh
 ref aot inspect MyLibrary.dll
 ref aot publish MyApp.csproj --rid osx-arm64 --output artifacts/aot-check
-```
-
-`inspect` gives you things to review. `publish` tries a real Native AOT build and saves
-its result and logs in a new folder. It runs the project's build steps; it does not upload
-anything to NuGet. For a multi-targeted project, add `--framework net11.0`.
-
-To see which compiler and native CLI files an installed SDK contains:
-
-```sh
-ref sdk
 ref sdk MyApp.csproj
 ```
 
-The SDK is selected using the input directory's `global.json` context. An explicit SDK
-installation directory is also accepted.
+`aot publish` writes its result and logs into a new folder below `--output` on every run. For a multi-targeted
+project, add `--framework net11.0`.
 
-## Use it in scripts
+## More
 
-Add `--json` for structured output or `--plain` for simple text. The normal terminal view
-uses tables and trees. JSON is compact and uses schema version **2**; structured errors
-have a distinct `code` and, when available, `input` and `candidates`.
+- [Technical reference](https://github.com/ANcpLua/RefTrace/blob/main/docs/REFERENCE.md): report formats, limits,
+  the JSON contract, building from source.
+- [Package reviews](https://github.com/ANcpLua/RefTrace/blob/main/docs/PACKAGE-AUDIT.md): repeatable package,
+  source and DLL comparisons.
+- [Async and threading](https://github.com/ANcpLua/RefTrace/blob/main/docs/ASYNC-THREADING.md): verified API choices
+  and a reusable modernization goal. Its latest application is the
+  [RefTrace self-review](https://github.com/ANcpLua/RefTrace/blob/main/docs/SELF-REVIEW.md), followed by the
+  [transitive compatibility review](https://github.com/ANcpLua/RefTrace/blob/main/docs/TRANSITIVE-REVIEW.md).
+- [Architecture](https://github.com/ANcpLua/RefTrace/blob/main/ARCHITECTURE.md): code layout and design decisions.
+- [Changelog](https://github.com/ANcpLua/RefTrace/blob/main/CHANGELOG.md) and
+  [publishing](https://github.com/ANcpLua/RefTrace/blob/main/docs/PUBLISHING.md).
 
-| Exit code | Meaning |
-| --- | --- |
-| `0` | The requested inspection completed or the check passed |
-| `1` | A rule failed, a dependency was not found, a publish failed, or a package review has incomplete evidence |
-| `2` | RefTrace could not complete the request or reach a reliable conclusion |
-
-A successful inspection means it read the input successfully. It is not a blanket claim
-that the app is safe or AOT-compatible.
-
-For report formats and exact limits, see the [technical reference](docs/REFERENCE.md).
-For repeatable package, source and DLL comparisons, see [package audits](docs/PACKAGE-AUDIT.md).
-For verified async API choices and a reusable modernization goal, see [async and threading](docs/ASYNC-THREADING.md).
-The latest application of that goal is the [RefTrace self-review](docs/SELF-REVIEW.md).
-The follow-up [transitive compatibility review](docs/TRANSITIVE-REVIEW.md) records
-the five accepted dependency overrides and removal of unused test telemetry.
-For the code layout and design decisions, see [architecture](ARCHITECTURE.md).
-Changes are listed in [CHANGELOG.md](CHANGELOG.md).
-
-RefTrace is [MIT licensed](LICENSE). Dependencies keep their own licenses;
-see [third-party notices](THIRD-PARTY-NOTICES.md).
+RefTrace is [MIT licensed](https://github.com/ANcpLua/RefTrace/blob/main/LICENSE). Dependencies keep their own
+licenses; see [third-party notices](https://github.com/ANcpLua/RefTrace/blob/main/THIRD-PARTY-NOTICES.md).

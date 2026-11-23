@@ -245,7 +245,7 @@ a stable machine-readable identifier. Optional `input` identifies the input that
 
 Schema 2 removes the old compact member-name records, omits unrequested package asset
 arrays, and replaces the generic `invalid-input` code with specific errors. JSON is
-written on one line. This private preview deliberately makes no schema-1 compatibility
+written on one line. The 0.x previews make no schema-1 compatibility
 promise. A review with per-package failures still returns its `review` report and exit 1;
 its detailed saved `report.json` has its own schema version 2.
 
@@ -304,22 +304,12 @@ RefTrace is not a vulnerability scanner; a passed dependency policy is not a sec
 
 ## Package and try locally
 
-For the prepared GitHub Actions workflow and NuGet account setup, see [Publishing setup](PUBLISHING.md).
-
 ```sh
-dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj -c Release -o artifacts/packages -p:Version=0.10.0-preview.1
+dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj -c Release -o artifacts/packages
 dotnet tool install RefTrace --version 0.10.0-preview.1 --source ./artifacts/packages --tool-path ./artifacts/tools
 ./artifacts/tools/ref --help
 ```
 
-Use a new package version for each release. Before a public release, set the chosen license
-and repository metadata in the package project, run the tests, and test the packed tool.
-Publishing requires ownership of the NuGet package ID and your NuGet publishing credentials
-or configured trusted publishing. Local packaging does not reserve the ID.
-
-```sh
-dotnet nuget push artifacts/packages/RefTrace.0.10.0-preview.1.nupkg --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY"
-```
-
-The project has no automatic publish step. `CHANGELOG.md` tracks behavior changes; package
-SemVer and `schemaVersion` are maintained independently.
+The version comes from `Directory.Build.props`; use a new one for each release. Local packaging does not reserve
+the package ID. A release runs through the manually started workflow that [Publishing](PUBLISHING.md) describes.
+`CHANGELOG.md` tracks behavior changes; package SemVer and `schemaVersion` are maintained independently.
