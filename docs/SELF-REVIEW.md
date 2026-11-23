@@ -34,6 +34,11 @@ coordinates, with six deliberate transitive retentions and zero collection failu
 | Microsoft.Diagnostics.NETCore.Client | 0.2.750501 | Already newest listed |
 | Microsoft.Diagnostics.Tracing.TraceEvent | 4.0.0 | Already newest listed |
 
+> 2026-11-23: NuGet.ProjectModel is pinned at `8.0.0`, released on 2026-11-10; every NuGet
+> package in the graph resolves to `8.0.0`. The `ref review` comparison of 7.9.0 with 8.0.0 is
+> recorded in the [transitive review](TRANSITIVE-REVIEW.md#recheck-on-the-released-packages--2026-11-23).
+> The 7.9.0 row above records what was newest on 2026-10-29.
+
 “Newest” means a listed NuGet release selected with NuGet version ordering, including
 newer prereleases. It does not mean a documentation framework selector or an unreleased
 source branch. The [official .NET feed](https://builds.dotnet.microsoft.com/dotnet/release-metadata/11.0/releases.json)

@@ -3,6 +3,12 @@
 This is the historical migration record. See the [2026-10-29 self-review](SELF-REVIEW.md)
 for the current package decisions and validation.
 
+> 2026-11-23: `Directory.Packages.props` now pins NuGet.ProjectModel `8.0.0`, and all nine NuGet
+> packages in the graph resolve to `8.0.0` (`ref packages src/RefTrace.Cli/RefTrace.Cli.csproj
+> --package 'NuGet.*'`). NuGet 8.0.0 was published on 2026-11-10 from NuGet.Client
+> `7719b2079546f52df28ecb639ce114ca8ca82440`, the revision recorded in each package's nuspec.
+> The 7.9.0 row below records what was newest on 2026-10-26.
+
 The application now targets .NET 11 with SDK `11.0.100-rc.3.26522.148`.
 The initial collection inspected 33 resolved package coordinates and 24 package archives.
 The follow-up collection also covered 33 coordinates. Both completed without collection
