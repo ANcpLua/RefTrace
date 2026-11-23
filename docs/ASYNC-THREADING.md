@@ -301,7 +301,8 @@ included where stated. Custom sample names are not framework APIs.
 
 RefTrace references the analyzer once through `GlobalPackageReference` in
 `Directory.Packages.props`. NuGet applies it to every project in `RefTrace.slnx`
-(eight today; nine before the self-review deleted the `RefTrace.Core` facade) as a
+(ten since 2026-11-23 added two test fixtures; eight before that, and nine before the
+self-review deleted the `RefTrace.Core` facade) as a
 private development dependency. `MeziantouAnalysisMode=None` in `Directory.Build.props`
 disables that package's default rule set; the root `.editorconfig` explicitly
 enables the reviewed rules below. This setting does not disable the SDK, MSTest

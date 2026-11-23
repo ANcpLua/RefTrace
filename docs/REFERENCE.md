@@ -260,6 +260,8 @@ Layout:
 * `RefTrace.Cli`: command parsing, Spectre.Console presentation and exit-code mapping.
 * `RefTrace.Tests`: reader, graph, policy, metadata and CLI tests using MSTest with native MTP.
 * `RefTrace.RuntimeFixture`: a controlled child process for live-observation integration tests.
+* `RefTrace.AnalyzerAssetsFixture`: a project that restores with `RestoreEnableAnalyzerAssets`.
+* `RefTrace.LanguageFixture`: C# 15 and .NET 11 constructs whose metadata the tests read.
 
 Keep artifact-format adaptation in the readers. Keep graph policy independent of files and
 the CLI. The core reads streams as well as paths so new formats and tests do not require
