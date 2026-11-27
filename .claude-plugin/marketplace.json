@@ -1,0 +1,13 @@
+{
+  "name": "reftrace",
+  "owner": {
+    "name": "ANcpLua"
+  },
+  "plugins": [
+    {
+      "name": "debug-trace",
+      "source": "./plugins/debug-trace",
+      "description": "Debug wrong results, crashes, hangs, failing tests and misleading diagnostics, and trace requests and dependencies in any language. Uses RefTrace for NuGet, managed assemblies and CLR loader events."
+    }
+  ]
+}

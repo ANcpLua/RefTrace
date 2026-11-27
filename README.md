@@ -97,6 +97,15 @@ Put the cases your repository cares about into its `AGENTS.md`, for example:
 Type names are metadata names: `+` joins nested types, and a backtick with the number of type parameters marks a
 generic type, as in ``System.Collections.Generic.List`1``.
 
+The `debug-trace` skill in [`plugins/debug-trace`](plugins/debug-trace) brings this to an agent without an
+`AGENTS.md` entry: it loads by itself when an agent debugs a failure or traces a request or dependency, in any
+language, and reaches for `ref` where .NET is involved. This repository is also its plugin marketplace.
+
+- Claude Code: `/plugin install debug-trace --marketplace ANcpLua/RefTrace`
+- claude.ai and the Claude app: Customize, Plugins, Add marketplace `ANcpLua/RefTrace`, then turn on
+  `debug-trace`. Cloud sessions of Claude Code load it from there too.
+- Codex: link `plugins/debug-trace/skills/debug-trace` into `~/.agents/skills/`.
+
 ## Examples
 
 Find a dependency:

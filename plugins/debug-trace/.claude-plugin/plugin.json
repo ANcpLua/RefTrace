@@ -1,0 +1,10 @@
+{
+  "name": "debug-trace",
+  "description": "Debug wrong results, crashes, hangs, failing tests and misleading diagnostics, and trace requests and dependencies in any language. Uses RefTrace for NuGet, managed assemblies and CLR loader events.",
+  "author": {
+    "name": "ANcpLua"
+  },
+  "homepage": "https://github.com/ANcpLua/RefTrace",
+  "repository": "https://github.com/ANcpLua/RefTrace",
+  "license": "MIT"
+}
