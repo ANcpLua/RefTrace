@@ -29,12 +29,40 @@ public sealed class ProvidedOutcome : ProvidedOutcome.IUnionMembers
 
     public interface IUnionMembers
     {
-        static ProvidedOutcome Create(Approved value) => new(value);
+        static ProvidedOutcome Create(Approved value) => Create((object)value);
         static ProvidedOutcome Create(Declined value) => new(value);
+        static ProvidedOutcome Create(in long value) => new(value);
+
+        private static ProvidedOutcome Create(object value) => new(value);
+        static int Create(int value) => value;
+        static ProvidedOutcome Create([In] ref decimal value) => new(value);
+        static ProvidedOutcome Create(ref readonly char value) => new(value);
+        static ProvidedOutcome Create(out double value)
+        {
+            value = 0;
+            return new(value);
+        }
         object? Value { get; }
     }
 
     object? IUnionMembers.Value => _value;
+}
+
+// Nested generic factories must return the union with its enclosing and nested type parameters in order.
+public static class Outcomes<TOuter>
+{
+    [Union]
+    public sealed class Result<TInner>(object? value) : Result<TInner>.IUnionMembers
+    {
+        public interface IUnionMembers
+        {
+            static Result<TInner> Create(TInner value) => new(value);
+            static Outcomes<TInner>.Result<TOuter> Create(Declined value) => new(value);
+            object? Value { get; }
+        }
+
+        object? IUnionMembers.Value => value;
+    }
 }
 
 [Union]

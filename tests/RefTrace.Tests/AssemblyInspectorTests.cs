@@ -102,6 +102,61 @@ public sealed class AssemblyInspectorTests
     }
 
     [TestMethod]
+    public void Read_UnionFactoryTypeReferencesRespectTheirResolutionScope()
+    {
+        var metadata = new MetadataBuilder();
+        var name = metadata.GetOrAddString("ScopeFixture");
+        var module = metadata.AddModule(0, metadata.GetOrAddString("ScopeFixture.dll"), metadata.GetOrAddGuid(Guid.NewGuid()), default, default);
+        metadata.AddAssembly(name, new Version(1, 0, 0, 0), default, default, 0, AssemblyHashAlgorithm.None);
+        var runtime = metadata.AddAssemblyReference(metadata.GetOrAddString("System.Runtime"), new Version(11, 0, 0, 0), default, default, 0, default);
+        var foreign = metadata.AddAssemblyReference(name, new Version(2, 0, 0, 0), default, default, 0, default);
+        var firstField = MetadataTokens.FieldDefinitionHandle(1);
+        var firstMethod = MetadataTokens.MethodDefinitionHandle(1);
+        metadata.AddTypeDefinition(TypeAttributes.NotPublic, default, metadata.GetOrAddString("<Module>"), default, firstField, firstMethod);
+        var ns = metadata.GetOrAddString("Fixture");
+        var typeName = metadata.GetOrAddString("Outcome");
+        var objectType = metadata.AddTypeReference(runtime, metadata.GetOrAddString("System"), metadata.GetOrAddString("Object"));
+        var union = metadata.AddTypeDefinition(TypeAttributes.Public, ns, typeName, objectType, firstField, firstMethod);
+        var provider = metadata.AddTypeDefinition(TypeAttributes.NestedPublic | TypeAttributes.Interface | TypeAttributes.Abstract,
+            default, metadata.GetOrAddString("IUnionMembers"), default, firstField, firstMethod);
+        metadata.AddNestedType(provider, union);
+        metadata.AddInterfaceImplementation(union, provider);
+        var attribute = metadata.AddTypeReference(runtime, metadata.GetOrAddString("System.Runtime.CompilerServices"), metadata.GetOrAddString("UnionAttribute"));
+        var constructor = metadata.AddMemberReference(attribute, metadata.GetOrAddString(".ctor"), metadata.GetOrAddBlob(new byte[] { 0x20, 0, 1 }));
+        metadata.AddCustomAttribute(union, constructor, metadata.GetOrAddBlob(new byte[] { 1, 0, 0, 0 }));
+
+        var bodies = new BlobBuilder();
+        var il = new InstructionEncoder(new BlobBuilder());
+        il.OpCode(ILOpCode.Ldnull);
+        il.OpCode(ILOpCode.Ret);
+        var body = new MethodBodyStreamEncoder(bodies).AddMethodBody(il);
+        AddFactory(module, PrimitiveTypeCode.String);
+        AddFactory(foreign, PrimitiveTypeCode.Int32);
+        var getter = metadata.AddMethodDefinition(MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.SpecialName,
+            MethodImplAttributes.IL, metadata.GetOrAddString("get_Value"), metadata.GetOrAddBlob(new byte[] { 0x20, 0, 0x1c }), body, MetadataTokens.ParameterHandle(1));
+        var value = metadata.AddProperty(PropertyAttributes.None, metadata.GetOrAddString("Value"), metadata.GetOrAddBlob(new byte[] { 0x28, 0, 0x1c }));
+        metadata.AddPropertyMap(provider, value);
+        metadata.AddMethodSemantics(value, MethodSemanticsAttributes.Getter, getter);
+
+        var pe = new ManagedPEBuilder(new PEHeaderBuilder(imageCharacteristics: Characteristics.Dll), new MetadataRootBuilder(metadata), bodies);
+        var image = new BlobBuilder();
+        pe.Serialize(image);
+        using var stream = new MemoryStream(image.ToArray());
+        var report = AssemblyInspector.Read(stream, "ScopeFixture.dll", "Fixture.Outcome");
+        CollectionAssert.AreEqual(new[] { "System.String" }, report.Types.Single().UnionCases!.ToArray());
+
+        void AddFactory(EntityHandle scope, PrimitiveTypeCode parameter)
+        {
+            var returnType = metadata.AddTypeReference(scope, ns, typeName);
+            var signature = new BlobBuilder();
+            new BlobEncoder(signature).MethodSignature().Parameters(1, result => result.Type().Type(returnType, isValueType: false),
+                args => args.AddParameter().Type().PrimitiveType(parameter));
+            metadata.AddMethodDefinition(MethodAttributes.Public | MethodAttributes.Static, MethodImplAttributes.IL,
+                metadata.GetOrAddString("Create"), metadata.GetOrAddBlob(signature), body, MetadataTokens.ParameterHandle(1));
+        }
+    }
+
+    [TestMethod]
     public void Read_NonManagedData_IsRejected()
     {
         Assert.ThrowsExactly<InspectionException>(() =>

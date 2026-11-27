@@ -33,9 +33,16 @@ public sealed class LanguageMetadataTests
             Assert.AreEqual("public System.Object Value { get:public; }", union.Members.Single(m => m.Name == "Value").Signature, name);
         }
         Assert.IsNull(Type(report, "Approved").UnionCases);
-        // A member provider supplies the cases through static Create methods; an in parameter is still the value type.
-        CollectionAssert.AreEqual(new[] { Namespace + "Approved", Namespace + "Declined" }, Type(report, "ProvidedOutcome").UnionCases!.ToArray());
+        // An in parameter is still the value type.
         CollectionAssert.AreEqual(new[] { "System.Int32", "System.String" }, Type(report, "Measurement").UnionCases!.ToArray());
+    }
+
+    [TestMethod]
+    [DataRow("ProvidedOutcome", new[] { Namespace + "Approved", Namespace + "Declined", "System.Int64" })]
+    [DataRow("Outcomes`1+Result`1", new[] { "TInner" })]
+    public void Union_ProviderCasesComeFromEligibleFactories(string name, string[] expectedCases)
+    {
+        CollectionAssert.AreEqual(expectedCases, Type(Read(), name).UnionCases!.ToArray());
     }
 
     [TestMethod]

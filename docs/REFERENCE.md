@@ -163,12 +163,14 @@ does not establish AOT compatibility.
   * A `closed` class is abstract in metadata and carries `IsClosedTypeAttribute`, whose
     `DerivedTypes` lists the direct subtypes; RefTrace reports them as `closedDerivedTypes`.
     Closure is not transitive, and metadata records nothing on the subtypes themselves.
-  * A type with `UnionAttribute` reports `unionCases`, the types the compiler treats as its
-    cases: the parameters of the static `Create` methods of a nested `IUnionMembers` provider
-    when there is one, otherwise of its public single-parameter constructors. A case taken
-    by `in` reference is reported as its value type. A `union` declaration and a
-    hand-written `[Union]` type are reported alike; metadata does not record which one the
-    source used.
+  * A type with `UnionAttribute` reports its case types in `unionCases`. For a nested
+    `IUnionMembers` provider, RefTrace reads the case type from each declared public, nongeneric
+    static `Create` method that takes one parameter by value or `in` and returns the enclosing
+    union by value. The return type must identify the same type definition with its original generic arguments in order.
+    Without a provider, RefTrace reads public single-parameter constructors. An `in` parameter
+    contributes its value type. The report covers both `union` declarations and hand-written
+    `[Union]` types. In hand-authored IL, a default indexer getter named `Create` can also
+    contribute its index parameter to the report.
   * Members of a C# 14 extension block appear on the static class with a `receiver` and an
     `extension(...)` prefix in `signature`, including extension properties and indexers. A
     generic block reports its type parameters and constraints in `extensionGenericParameters`

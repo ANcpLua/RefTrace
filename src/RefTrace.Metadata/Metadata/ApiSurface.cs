@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Reflection;
 using System.Reflection.Metadata;
+using System.Reflection.Metadata.Ecma335;
 using RefTrace.Core;
 
 namespace RefTrace.Metadata;
@@ -202,20 +203,83 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
         IEnumerable<string> parameters;
         if (providerHandle.IsNil)
         {
+            // A case passed by reference (an in parameter) is still the value type itself.
             parameters = members.Where(m => m is { Kind: "constructor", Accessibility: "public", IsStatic: false, Parameters.Count: 1 })
-                .Select(m => m.Parameters[0].Type);
+                .Select(m => m.Parameters[0].Type.TrimEnd('&'));
         }
         else
         {
             var provider = reader.GetTypeDefinition(providerHandle);
             var context = new Context(Names(provider.GetGenericParameters()), []);
+            var union = provider.GetDeclaringType();
+            var arity = type.GetGenericParameters().Count;
             parameters = provider.GetMethods().Select(reader.GetMethodDefinition)
-                .Where(method => (method.Attributes & MethodAttributes.Static) != 0 && reader.GetString(method.Name) == "Create")
-                .Select(method => method.DecodeSignature(this, context).ParameterTypes)
-                .Where(types => types.Length == 1).Select(types => types[0]);
+                .Where(method => (method.Attributes & MethodAttributes.MemberAccessMask) == MethodAttributes.Public
+                    && (method.Attributes & MethodAttributes.Static) != 0 && reader.StringComparer.Equals(method.Name, "Create"))
+                .Select(method => UnionFactoryCase(method, union, arity, context)).OfType<string>();
         }
-        // A case passed by reference (an in parameter) is still the value type itself.
-        return parameters.Select(parameter => parameter.TrimEnd('&')).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+        return parameters.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+    }
+
+    private string? UnionFactoryCase(MethodDefinition method, TypeDefinitionHandle union, int arity, Context context)
+    {
+        var signature = reader.GetBlobReader(method.Signature);
+        if (signature.ReadSignatureHeader().IsGeneric || signature.ReadCompressedInteger() != 1) return null;
+        var code = ReadUnmodifiedTypeCode(ref signature);
+        if (arity != 0)
+        {
+            if (code != SignatureTypeCode.GenericTypeInstance) return null;
+            code = signature.ReadSignatureTypeCode();
+        }
+        if (code != SignatureTypeCode.TypeHandle || !IsLocalType(signature.ReadTypeHandle(), union)) return null;
+        // An open union returns its own type arguments in order, including any enclosing type's parameters.
+        if (arity != 0 && signature.ReadCompressedInteger() != arity) return null;
+        for (var index = 0; index < arity; index++)
+            if (ReadUnmodifiedTypeCode(ref signature) != SignatureTypeCode.GenericTypeParameter || signature.ReadCompressedInteger() != index) return null;
+
+        var parameterType = signature;
+        if (ReadUnmodifiedTypeCode(ref signature) == SignatureTypeCode.ByReference)
+        {
+            var handle = method.GetParameters().FirstOrDefault(h => reader.GetParameter(h).SequenceNumber == 1);
+            if (handle.IsNil || !IsInParameter(reader.GetParameter(handle))) return null;
+            parameterType = signature;
+        }
+        return new SignatureDecoder<string, Context>(this, reader, context).DecodeType(ref parameterType);
+    }
+
+    private bool IsInParameter(Parameter parameter)
+    {
+        if ((parameter.Attributes & (ParameterAttributes.In | ParameterAttributes.Out)) == ParameterAttributes.Out) return false;
+        var attributes = parameter.GetCustomAttributes().Select(h => _names.Method(reader.GetCustomAttribute(h).Constructor).Type)
+            .ToHashSet(StringComparer.Ordinal);
+        return attributes.Contains("System.Runtime.CompilerServices.IsReadOnlyAttribute")
+            && !attributes.Contains("System.Runtime.CompilerServices.RequiresLocationAttribute");
+    }
+
+    private static SignatureTypeCode ReadUnmodifiedTypeCode(ref BlobReader signature)
+    {
+        var code = signature.ReadSignatureTypeCode();
+        while (code is SignatureTypeCode.RequiredModifier or SignatureTypeCode.OptionalModifier)
+        {
+            signature.ReadTypeHandle();
+            code = signature.ReadSignatureTypeCode();
+        }
+        return code;
+    }
+
+    // A return type can name a definition through a TypeRef scoped to this module (ECMA-335 II.22.38).
+    private bool IsLocalType(EntityHandle handle, TypeDefinitionHandle definition)
+    {
+        while (handle.Kind == HandleKind.TypeReference && !definition.IsNil)
+        {
+            var reference = reader.GetTypeReference((TypeReferenceHandle)handle);
+            var type = reader.GetTypeDefinition(definition);
+            if (!reader.StringComparer.Equals(reference.Name, reader.GetString(type.Name))
+                || !reader.StringComparer.Equals(reference.Namespace, reader.GetString(type.Namespace))) return false;
+            handle = reference.ResolutionScope;
+            definition = type.GetDeclaringType();
+        }
+        return definition.IsNil ? handle.Kind == HandleKind.ModuleDefinition && !handle.IsNil : handle == definition;
     }
 
     private static IReadOnlyList<string> Modifiers(TypeDefinition type, string kind, bool closed, bool readOnly, bool byRefLike)
