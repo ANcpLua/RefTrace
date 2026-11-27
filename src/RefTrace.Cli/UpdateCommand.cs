@@ -145,9 +145,9 @@ public static partial class CliApplication
         worker.Environment["REFTRACE_UPDATE_SOURCE"] = source;
         worker.Environment["REFTRACE_UPDATE_RESULT"] = receipt;
         // Publish the final receipt by rename. A polling client cannot lock the destination mid-write.
-        File.WriteAllText(receipt + ".tmp", "");
         try
         {
+            await File.WriteAllTextAsync(receipt + ".tmp", "", token).ConfigureAwait(false);
             using var process = Process.Start(worker) ?? throw new InspectionException("tool-unavailable", "Cannot start the Windows updater.");
             using var startup = CancellationTokenSource.CreateLinkedTokenSource(token);
             startup.CancelAfter(TimeSpan.FromSeconds(30));
