@@ -42,6 +42,62 @@ public sealed class ApiSignatureTests
         Assert.Contains("in System.Int64 input", method.Signature);
     }
 
+    private static ApiType ReadByReferenceFixture(string name) =>
+        AssemblyInspector.Read(LanguageMetadataTests.FixturePath(), "RefTrace.LanguageFixture." + name).Types.Single();
+
+    [TestMethod]
+    [DataRow("ByReference", "virtual")]
+    [DataRow("IByReference", "abstract")]
+    public void Read_ModifiedByReferenceParametersRetainPassingAndModifier(string typeName, string memberModifier)
+    {
+        var method = ReadByReferenceFixture(typeName).Members.Single(m => m.Name == "Inspect");
+        const string modifier = " modreq(System.Runtime.InteropServices.InAttribute)";
+        Assert.AreEqual(new ApiParameter("input", "System.Int32&" + modifier, "in", false, null), method.Parameters[0]);
+        Assert.AreEqual(new ApiParameter("location", "System.Int32&" + modifier, "ref readonly", false, null), method.Parameters[1]);
+        Assert.AreEqual($"public {memberModifier} System.Void Inspect(in System.Int32{modifier} input, ref readonly System.Int32{modifier} location)", method.Signature);
+    }
+
+    [TestMethod]
+    public void Read_ReportsOrdinaryRefReadonlyParameter()
+    {
+        var method = ReadByReferenceFixture("ByReference").Members.Single(m => m.Name == "Read");
+        Assert.AreEqual(new ApiParameter("location", "System.Int32&", "ref readonly", false, null), method.Parameters.Single());
+        Assert.AreEqual("public System.Void Read(ref readonly System.Int32 location)", method.Signature);
+    }
+
+    [TestMethod]
+    public void Read_FunctionPointerReturnAndParameterByReferenceAreIndependent()
+    {
+        const string pointer = "methodptr[Default]()->System.Int32";
+        var overloads = ReadByReferenceFixture("ByReference").Members.Where(m => m.Name == "Callback").ToArray();
+        CollectionAssert.AreEquivalent(new[]
+        {
+            (pointer + "&", "value", $"public unsafe System.Void Callback({pointer}& callback)"),
+            ("(" + pointer + ")&", "ref", $"public unsafe System.Void Callback(ref {pointer} callback)"),
+            ("(" + pointer + "&)&", "ref", $"public unsafe System.Void Callback(ref {pointer}& callback)")
+        }, overloads.Select(m => (m.Parameters.Single().Type, m.Parameters.Single().Passing, m.Signature)).ToArray());
+    }
+
+    [TestMethod]
+    public void Read_FunctionPointerKeepsNestedOptionalModifiersAndOuterRequiredModifier()
+    {
+        const string pointer = "methodptr[Unmanaged]()->System.Int32& modopt(System.Runtime.CompilerServices.CallConvSuppressGCTransition)"
+            + " modopt(System.Runtime.CompilerServices.CallConvCdecl)";
+        const string modifier = " modreq(System.Runtime.InteropServices.InAttribute)";
+        var method = ReadByReferenceFixture("ByReference").Members.Single(m => m.Name == "Suppressed");
+        Assert.AreEqual(new ApiParameter("callback", "(" + pointer + ")&" + modifier, "in", false, null), method.Parameters.Single());
+        Assert.AreEqual($"public unsafe virtual System.Void Suppressed(in ({pointer}){modifier} callback)", method.Signature);
+    }
+
+    [TestMethod]
+    public void Read_ExtensionRetainsRefReadonlyReceiverAndParameter()
+    {
+        var method = ReadByReferenceFixture("ByReferenceExtensions").Members.Single(m => m.Receiver is not null);
+        Assert.AreEqual(new ApiParameter("receiver", "System.Int32&", "ref readonly", false, null), method.Receiver);
+        Assert.AreEqual(new ApiParameter("location", "System.Int64&", "ref readonly", false, null), method.Parameters.Single());
+        Assert.AreEqual("extension(ref readonly System.Int32 receiver) public System.Int32 ReadLocation(ref readonly System.Int64 location)", method.Signature);
+    }
+
     [TestMethod]
     public void Read_ReportsConstructorsIndexersEventsFieldsAndAccessorVisibility()
     {

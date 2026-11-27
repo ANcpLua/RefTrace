@@ -29,6 +29,8 @@ ref review . --catalog-only
 ref review path/to/App.csproj --refresh --package 'NuGet.*'
 ref review path/to/App.slnx --catalog-only --refresh
 ref versions path/to/index.json --current 1.2.3
+ref help update
+ref update --json
 ref processes
 ref runtime --pid 12345 --seconds 1 --timeout 30 --modules
 ref reflection path/to/library.dll --json
@@ -49,6 +51,17 @@ followed by the generic parameter count.
 `--seconds` and `--timeout` accept a decimal point in every locale, as well as the local
 decimal separator. For example, under `de_AT`, `0.25` and `0,25` both mean a quarter
 of a second. Omit thousands separators.
+
+`ref update` and `ref --update` select the latest stable RefTrace package from nuget.org.
+Pass `--source <feed>` for an alternate NuGet feed or local package directory. A global or
+custom tool-path shim updates its own directory. A manifest tool updates the existing pin
+identified by the SDK in the current project. The command requires the .NET SDK.
+
+For synchronous updates the `update` report includes the target, outcome, SDK exit code, stdout
+and stderr. On Windows a running shim locks files the SDK needs to replace. The command starts
+a Windows PowerShell worker and returns `scheduled` with a `resultFile` path. That file appears
+after the shim exits and the SDK finishes. It contains the final outcome, exit code and output.
+Read it, check `ref version`, and discard it when done.
 
 `--framework` accepts an exact recorded target name, a TFM, or a TFM/RID such as
 `net10.0/linux-x64`. If an artifact has more than one matching target, selection is required.
@@ -152,6 +165,11 @@ does not establish AOT compatibility.
   kind, accessibility, static status, value/return type, parameter names/types/ref-kinds,
   optional/default constants, generic constraints, visible accessors and a readable
   `signature`. Types include kind, base type, interfaces and generic constraints.
+  Parameter `passing` describes the outer parameter as `value`, `ref`, `out`, `in`, or
+  `ref readonly`. A function pointer passed by value can itself return a reference. The
+  report preserves that distinction and the recorded custom modifiers. For interop
+  parameters with only direction flags, `passing` reflects those flags. For example,
+  `[In] ref` is reported as `in`. Character defaults and constants use escaped literal syntax.
   Constructors, fields and events are included; property/event accessors are not repeated
   as methods. This is metadata evidence, not a binary/source compatibility verdict.
   Inherited members, nullable annotations and other custom-attribute semantics are not
@@ -241,7 +259,7 @@ Every structured report has an envelope:
 ```
 
 Kinds are `assets`, `packages`, `why`, `check`, `assembly`, `sdk`, `processes`, `runtime`,
-`versions`, `review`, `reflection`, `aot-inspect`, `aot-publish`, and `error`. Consumers should check
+`versions`, `update`, `review`, `reflection`, `aot-inspect`, `aot-publish`, and `error`. Consumers should check
 `schemaVersion` and tolerate additional fields. Removing fields or changing their meaning
 requires a new schema version. Error data has `code` and `message`; diagnostic text is not
 a stable machine-readable identifier. Optional `input` identifies the input that failed;
@@ -250,7 +268,7 @@ a stable machine-readable identifier. Optional `input` identifies the input that
 `project-not-found`, `invalid-solution`, `ambiguous-project`, `ambiguous-target`, `target-not-found`,
 `restore-required`, `mismatched-assets`, `restore-failed`, `evaluation-failed`,
 `sdk-unavailable`, `ambiguous-sdk`, `tool-unavailable`, `output-exists`, `review-failed`,
-`invalid-artifact`, `unsupported-artifact`, `inconclusive-policy`, `diagnostics-unavailable`,
+`invalid-artifact`, `unsupported-artifact`, `unsupported-installation`, `inconclusive-policy`, `diagnostics-unavailable`,
 `access-denied`, `io-error`, `timeout` and `cancelled`. Absolute paths are machine-specific.
 
 Schema 2 removes the old compact member-name records, omits unrequested package asset

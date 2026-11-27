@@ -8,14 +8,29 @@ using RefTrace.Core;
 namespace RefTrace.Metadata;
 
 // Decode signatures from metadata only. No target assembly or attribute is loaded.
-internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider<string, ApiSurface.Context>, ICustomAttributeTypeProvider<string>
+internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider<ApiSurface.SignatureType, ApiSurface.Context>, ICustomAttributeTypeProvider<ApiSurface.SignatureType>
 {
     internal sealed record Context(string[] TypeParameters, string[] MethodParameters);
 
+    // A byref wraps its referent. A function pointer's return type may itself be a byref.
+    internal sealed record SignatureType(string Text, SignatureType? Referent = null, bool IsFunctionPointer = false)
+    {
+        public string PostfixOperand => IsFunctionPointer ? "(" + Text + ")" : Text;
+        public SignatureType Modified(string modifier) => new(PostfixOperand + modifier, Referent?.Modified(modifier));
+        public override string ToString() => Text;
+    }
+
+    private sealed record DeclaredParameter(ApiParameter Report, SignatureType Type)
+    {
+        public string Declaration => (Type.Referent is { } referent ? Report.Passing + " " + referent.Text : Type.Text)
+            + (Report.Name.Length == 0 ? "" : " " + Report.Name);
+    }
+
     // The declaration an extension member came from: the block's type parameters and its receiver.
-    private sealed record Extension(Context Context, ApiParameter? Receiver, IReadOnlyList<ApiGenericParameter> GenericParameters);
+    private sealed record Extension(Context Context, DeclaredParameter? Receiver, IReadOnlyList<ApiGenericParameter> GenericParameters);
 
     private const string RequiresUnsafeAttribute = "System.Diagnostics.CodeAnalysis.RequiresUnsafeAttribute";
+    private const string RequiresLocationAttribute = "System.Runtime.CompilerServices.RequiresLocationAttribute";
     private const string ByRefLikeAttribute = "System.Runtime.CompilerServices.IsByRefLikeAttribute";
     private readonly MetadataNames _names = new(reader);
     private readonly int? _memorySafetyRules = PeMetadata.MemorySafetyRulesVersion(reader);
@@ -26,7 +41,7 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
         foreach (var handle in reader.TypeDefinitions)
         {
             if (!Visible(handle) || IsExtensionScaffolding(handle)) continue;
-            var name = GetTypeFromDefinition(reader, handle, 0);
+            var name = GetTypeFromDefinition(reader, handle, 0).Text;
             if (!System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(pattern, name, ignoreCase: false)) continue;
             var type = reader.GetTypeDefinition(handle);
             var context = new Context(Names(type.GetGenericParameters()), []);
@@ -50,7 +65,7 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
                 Modifiers = Modifiers(type, kind, closed.Length != 0, attributes.Contains("System.Runtime.CompilerServices.IsReadOnlyAttribute"),
                     attributes.Contains(ByRefLikeAttribute)),
                 ClosedDerivedTypes = closed.Length == 0 ? null : DerivedTypes(closed[0]),
-                UnionCases = attributes.Contains("System.Runtime.CompilerServices.UnionAttribute") ? UnionCases(type, members) : null,
+                UnionCases = attributes.Contains("System.Runtime.CompilerServices.UnionAttribute") ? UnionCases(type, context) : null,
                 Layout = layout,
                 Notes = layout?.StartsWith("extended", StringComparison.Ordinal) == true
                     ? ExtendedLayoutNotes(type, layout, attributes.Contains(ByRefLikeAttribute)) : []
@@ -81,7 +96,7 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
             AddAccessor(descriptions, accessors.Getter, "get", context);
             AddAccessor(descriptions, accessors.Setter, "set", context);
             members.Add(Member(reader.GetString(property.Name), "property", visible.Select(h => reader.GetMethodDefinition(h).Attributes),
-                signature.ReturnType, parameters, [], descriptions,
+                signature.ReturnType.Text, parameters, [], descriptions,
                 RequiresUnsafe([property.GetCustomAttributes(), .. visible.Select(h => reader.GetMethodDefinition(h).GetCustomAttributes())]),
                 extension));
         }
@@ -112,7 +127,7 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
             var methodContext = (extension?.Context ?? typeContext) with { MethodParameters = Names(method.GetGenericParameters()) };
             var signature = method.DecodeSignature(this, methodContext);
             members.Add(Member(nameOfMethod, nameOfMethod is ".ctor" or ".cctor" ? "constructor" : "method", [method.Attributes],
-                signature.ReturnType, Parameters(signature.ParameterTypes, method.GetParameters()),
+                signature.ReturnType.Text, Parameters(signature.ParameterTypes, method.GetParameters()),
                 Generics(method.GetGenericParameters(), methodContext), [], RequiresUnsafe([method.GetCustomAttributes()]),
                 extension));
         }
@@ -123,7 +138,7 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
             if (access is not (FieldAttributes.Public or FieldAttributes.Family or FieldAttributes.FamORAssem)) continue;
             var accessibility = access switch { FieldAttributes.Public => "public", FieldAttributes.Family => "protected", _ => "protected-internal" };
             var isStatic = (field.Attributes & FieldAttributes.Static) != 0;
-            var fieldType = field.DecodeSignature(this, typeContext);
+            var fieldType = field.DecodeSignature(this, typeContext).Text;
             var fieldName = reader.GetString(field.Name);
             var requiresUnsafe = RequiresUnsafe([field.GetCustomAttributes()]);
             var modifier = (requiresUnsafe == true ? "unsafe " : "") + ((field.Attributes & FieldAttributes.Literal) != 0 ? "const "
@@ -157,9 +172,8 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
                 var declaration = reader.GetMethodDefinition(handle);
                 var context = new Context(Names(marker.GetGenericParameters()), []);
                 if (declaration.DecodeSignature(this, context).ParameterTypes is not [var receiverType]) return fallback;
-                var receiver = Parameters([receiverType], declaration.GetParameters())[0];
-                var named = declaration.GetParameters().Select(reader.GetParameter).Any(p => p.SequenceNumber == 1 && !p.Name.IsNil);
-                return new Extension(context, named ? receiver : receiver with { Name = "" }, Generics(marker.GetGenericParameters(), context));
+                var receiver = Parameters([receiverType], declaration.GetParameters(), unnamed: "")[0];
+                return new Extension(context, receiver, Generics(marker.GetGenericParameters(), context));
             }
             return fallback;
         });
@@ -193,7 +207,7 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
 
     // The compiler takes a [Union] type's cases from the static Create methods of a nested IUnionMembers
     // provider when there is one, otherwise from its public single-parameter constructors.
-    private IReadOnlyList<string> UnionCases(TypeDefinition type, IReadOnlyList<ApiMember> members)
+    private IReadOnlyList<string> UnionCases(TypeDefinition type, Context typeContext)
     {
         var providerHandle = type.GetNestedTypes().FirstOrDefault(handle =>
         {
@@ -204,8 +218,11 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
         if (providerHandle.IsNil)
         {
             // A case passed by reference (an in parameter) is still the value type itself.
-            parameters = members.Where(m => m is { Kind: "constructor", Accessibility: "public", IsStatic: false, Parameters.Count: 1 })
-                .Select(m => m.Parameters[0].Type.TrimEnd('&'));
+            parameters = type.GetMethods().Select(reader.GetMethodDefinition)
+                .Where(method => (method.Attributes & (MethodAttributes.MemberAccessMask | MethodAttributes.Static)) == MethodAttributes.Public
+                    && reader.StringComparer.Equals(method.Name, ".ctor"))
+                .Select(method => method.DecodeSignature(this, typeContext).ParameterTypes)
+                .Where(types => types.Length == 1).Select(types => (types[0].Referent ?? types[0]).Text);
         }
         else
         {
@@ -244,7 +261,7 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
             if (handle.IsNil || !IsInParameter(reader.GetParameter(handle))) return null;
             parameterType = signature;
         }
-        return new SignatureDecoder<string, Context>(this, reader, context).DecodeType(ref parameterType);
+        return new SignatureDecoder<SignatureType, Context>(this, reader, context).DecodeType(ref parameterType).Text;
     }
 
     private bool IsInParameter(Parameter parameter)
@@ -253,7 +270,7 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
         var attributes = parameter.GetCustomAttributes().Select(h => _names.Method(reader.GetCustomAttribute(h).Constructor).Type)
             .ToHashSet(StringComparer.Ordinal);
         return attributes.Contains("System.Runtime.CompilerServices.IsReadOnlyAttribute")
-            && !attributes.Contains("System.Runtime.CompilerServices.RequiresLocationAttribute");
+            && !attributes.Contains(RequiresLocationAttribute);
     }
 
     private static SignatureTypeCode ReadUnmodifiedTypeCode(ref BlobReader signature)
@@ -300,8 +317,8 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
     private IReadOnlyList<string>? DerivedTypes(CustomAttribute closed)
     {
         foreach (var argument in closed.DecodeValue(this).NamedArguments)
-            if (argument is { Name: "DerivedTypes", Value: ImmutableArray<CustomAttributeTypedArgument<string>> types })
-                return types.Select(item => (string)item.Value!).Order(StringComparer.Ordinal).ToArray();
+            if (argument is { Name: "DerivedTypes", Value: ImmutableArray<CustomAttributeTypedArgument<SignatureType>> types })
+                return types.Select(item => ((SignatureType)item.Value!).Text).Order(StringComparer.Ordinal).ToArray();
         return null;
     }
 
@@ -406,7 +423,7 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
     }
 
     private ApiMember Member(string name, string kind, IEnumerable<MethodAttributes> attributes, string type,
-        IReadOnlyList<ApiParameter> parameters, IReadOnlyList<ApiGenericParameter> generics, IReadOnlyList<string> accessors,
+        IReadOnlyList<DeclaredParameter> parameters, IReadOnlyList<ApiGenericParameter> generics, IReadOnlyList<string> accessors,
         bool? requiresUnsafe, Extension? extension)
     {
         var flags = attributes.ToArray();
@@ -415,8 +432,7 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
         var isStatic = flags.Any(f => (f & MethodAttributes.Static) != 0);
         var genericText = generics.Count == 0 ? "" : "<" + string.Join(", ", generics.Select(g => g.Name)) + ">";
         var parametersText = string.Join(", ", parameters.Select(p =>
-            (p.Passing == "value" ? p.Type : p.Passing + " " + p.Type.TrimEnd('&')) + " " + p.Name
-            + (p.DefaultValue is null ? p.Optional ? " [optional]" : "" : " = " + p.DefaultValue)));
+            p.Declaration + (p.Report.DefaultValue is null ? p.Report.Optional ? " [optional]" : "" : " = " + p.Report.DefaultValue)));
         var suffix = kind is "method" or "constructor" ? "(" + parametersText + ")"
             : parameters.Count != 0 ? "[" + parametersText + "]" : "";
         var constraints = string.Concat(generics.Where(g => g.Constraints.Count != 0)
@@ -426,10 +442,10 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
             : flags.Any(f => (f & MethodAttributes.Virtual) != 0 && (f & MethodAttributes.Final) == 0) ? "virtual " : "";
         var signature = $"{ExtensionText(extension)}{accessibility} {(isStatic ? "static " : "")}{(requiresUnsafe == true ? "unsafe " : "")}{modifiers}{type} {name}{genericText}{suffix}"
             + (accessors.Count == 0 ? "" : " { " + string.Join("; ", accessors) + "; }") + constraints;
-        return new(name, kind, accessibility, isStatic, type, parameters, generics, accessors, signature)
+        return new(name, kind, accessibility, isStatic, type, parameters.Select(p => p.Report).ToArray(), generics, accessors, signature)
         {
             RequiresUnsafe = requiresUnsafe,
-            Receiver = extension?.Receiver,
+            Receiver = extension?.Receiver?.Report,
             ExtensionGenericParameters = extension?.GenericParameters is { Count: > 0 } blockGenerics ? blockGenerics : null
         };
     }
@@ -441,23 +457,30 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
         if (extension.Receiver is not { } receiver) return "extension(receiver not recorded) ";
         var generics = extension.GenericParameters;
         return "extension" + (generics.Count == 0 ? "" : "<" + string.Join(", ", generics.Select(g => g.Name)) + ">")
-            + "(" + (receiver.Passing == "value" ? receiver.Type : receiver.Passing + " " + receiver.Type.TrimEnd('&'))
-            + (receiver.Name.Length == 0 ? "" : " " + receiver.Name) + ")"
+            + "(" + receiver.Declaration + ")"
             + string.Concat(generics.Where(g => g.Constraints.Count != 0).Select(g => " where " + g.Name + " : " + string.Join(", ", g.Constraints))) + " ";
     }
 
-    private IReadOnlyList<ApiParameter> Parameters(ImmutableArray<string> types, ParameterHandleCollection handles)
+    private IReadOnlyList<DeclaredParameter> Parameters(ImmutableArray<SignatureType> types, ParameterHandleCollection handles, string? unnamed = null)
     {
         var metadata = handles.Select(reader.GetParameter).ToDictionary(p => p.SequenceNumber);
         return types.Select((type, index) =>
         {
             var exists = metadata.TryGetValue(index + 1, out var parameter);
             var flags = exists ? parameter.Attributes : 0;
-            var passing = !type.EndsWith('&') ? "value" : (flags & ParameterAttributes.Out) != 0 ? "out"
-                : (flags & ParameterAttributes.In) != 0 ? "in" : "ref";
-            return new ApiParameter(exists && !parameter.Name.IsNil ? reader.GetString(parameter.Name) : "arg" + index,
-                type, passing, (flags & ParameterAttributes.Optional) != 0, exists ? Constant(parameter.GetDefaultValue()) : null);
+            var passing = type.Referent is null ? "value" : exists ? ByReferencePassing(parameter) : "ref";
+            var name = exists && !parameter.Name.IsNil ? reader.GetString(parameter.Name) : unnamed ?? "arg" + index;
+            return new DeclaredParameter(new ApiParameter(name, type.Text, passing, (flags & ParameterAttributes.Optional) != 0,
+                exists ? Constant(parameter.GetDefaultValue()) : null), type);
         }).ToArray();
+    }
+
+    private string ByReferencePassing(Parameter parameter)
+    {
+        if ((parameter.Attributes & ParameterAttributes.Out) != 0) return "out";
+        if (parameter.GetCustomAttributes().Any(h => _names.Method(reader.GetCustomAttribute(h).Constructor).Type == RequiresLocationAttribute))
+            return "ref readonly";
+        return (parameter.Attributes & ParameterAttributes.In) != 0 ? "in" : "ref";
     }
 
     private string[] Names(GenericParameterHandleCollection handles)
@@ -480,7 +503,7 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
         if (handle.IsNil) return;
         var method = reader.GetMethodDefinition(handle);
         if (!Visible(method.Attributes)) return;
-        if (name == "set" && method.DecodeSignature(this, context).ReturnType.Contains("System.Runtime.CompilerServices.IsExternalInit", StringComparison.Ordinal)) name = "init";
+        if (name == "set" && method.DecodeSignature(this, context).ReturnType.Text.Contains("System.Runtime.CompilerServices.IsExternalInit", StringComparison.Ordinal)) name = "init";
         result.Add(name + ":" + ((method.Attributes & MethodAttributes.MemberAccessMask) switch
         {
             MethodAttributes.Public => "public", MethodAttributes.Family => "protected", _ => "protected-internal"
@@ -494,7 +517,8 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
         var value = reader.GetBlobReader(constant.Value).ReadConstant(constant.TypeCode);
         return value switch
         {
-            null => "null", string text => "\"" + Escape(text) + "\"", char character => "'" + Escape(character.ToString()) + "'",
+            null => "null", string text => "\"" + Escape(text) + "\"",
+            '\'' => @"'\''", char character => "'" + Escape(character.ToString()) + "'",
             bool boolean => boolean ? "true" : "false", _ => Convert.ToString(value, CultureInfo.InvariantCulture)
         };
     }
@@ -514,41 +538,44 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
 
     private string Type(EntityHandle handle, Context context) => handle.Kind switch
     {
-        HandleKind.TypeDefinition => GetTypeFromDefinition(reader, (TypeDefinitionHandle)handle, 0),
-        HandleKind.TypeReference => GetTypeFromReference(reader, (TypeReferenceHandle)handle, 0),
-        HandleKind.TypeSpecification => GetTypeFromSpecification(reader, context, (TypeSpecificationHandle)handle, 0),
+        HandleKind.TypeDefinition => GetTypeFromDefinition(reader, (TypeDefinitionHandle)handle, 0).Text,
+        HandleKind.TypeReference => GetTypeFromReference(reader, (TypeReferenceHandle)handle, 0).Text,
+        HandleKind.TypeSpecification => GetTypeFromSpecification(reader, context, (TypeSpecificationHandle)handle, 0).Text,
         _ => throw new BadImageFormatException("Invalid type signature handle.")
     };
 
-    public string GetTypeFromDefinition(MetadataReader metadata, TypeDefinitionHandle handle, byte rawTypeKind)
+    public SignatureType GetTypeFromDefinition(MetadataReader metadata, TypeDefinitionHandle handle, byte rawTypeKind)
     {
         var type = metadata.GetTypeDefinition(handle);
-        return type.GetDeclaringType().IsNil ? PeMetadata.Qualified(metadata.GetString(type.Namespace), metadata.GetString(type.Name))
-            : GetTypeFromDefinition(metadata, type.GetDeclaringType(), 0) + "+" + metadata.GetString(type.Name);
+        return new(type.GetDeclaringType().IsNil ? PeMetadata.Qualified(metadata.GetString(type.Namespace), metadata.GetString(type.Name))
+            : GetTypeFromDefinition(metadata, type.GetDeclaringType(), 0).Text + "+" + metadata.GetString(type.Name));
     }
-    public string GetTypeFromReference(MetadataReader metadata, TypeReferenceHandle handle, byte rawTypeKind)
+    public SignatureType GetTypeFromReference(MetadataReader metadata, TypeReferenceHandle handle, byte rawTypeKind)
     {
         var type = metadata.GetTypeReference(handle);
-        return type.ResolutionScope.Kind == HandleKind.TypeReference
-            ? GetTypeFromReference(metadata, (TypeReferenceHandle)type.ResolutionScope, 0) + "+" + metadata.GetString(type.Name)
-            : PeMetadata.Qualified(metadata.GetString(type.Namespace), metadata.GetString(type.Name));
+        return new(type.ResolutionScope.Kind == HandleKind.TypeReference
+            ? GetTypeFromReference(metadata, (TypeReferenceHandle)type.ResolutionScope, 0).Text + "+" + metadata.GetString(type.Name)
+            : PeMetadata.Qualified(metadata.GetString(type.Namespace), metadata.GetString(type.Name)));
     }
-    public string GetTypeFromSpecification(MetadataReader metadata, Context context, TypeSpecificationHandle handle, byte rawTypeKind)
+    public SignatureType GetTypeFromSpecification(MetadataReader metadata, Context context, TypeSpecificationHandle handle, byte rawTypeKind)
         => metadata.GetTypeSpecification(handle).DecodeSignature(this, context);
-    public string GetArrayType(string elementType, ArrayShape shape)
-        => elementType + "[" + string.Join(",", Enumerable.Range(0, shape.Rank).Select(i =>
+    public SignatureType GetArrayType(SignatureType elementType, ArrayShape shape)
+        => new(elementType.PostfixOperand + "[" + string.Join(",", Enumerable.Range(0, shape.Rank).Select(i =>
             (i < shape.LowerBounds.Length ? shape.LowerBounds[i].ToString(CultureInfo.InvariantCulture) : "") + "..."
-            + (i < shape.Sizes.Length ? ((i < shape.LowerBounds.Length ? shape.LowerBounds[i] : 0) + shape.Sizes[i] - 1).ToString(CultureInfo.InvariantCulture) : ""))) + "]";
-    public string GetByReferenceType(string elementType) => elementType + "&";
-    public string GetFunctionPointerType(MethodSignature<string> signature)
-        => "methodptr[" + signature.Header.CallingConvention + "](" + string.Join(", ", signature.ParameterTypes) + ")->" + signature.ReturnType;
-    public string GetGenericInstantiation(string genericType, ImmutableArray<string> typeArguments) => genericType + "<" + string.Join(", ", typeArguments) + ">";
-    public string GetGenericMethodParameter(Context context, int index) => index < context.MethodParameters.Length ? context.MethodParameters[index] : "!!" + index;
-    public string GetGenericTypeParameter(Context context, int index) => index < context.TypeParameters.Length ? context.TypeParameters[index] : "!" + index;
-    public string GetModifiedType(string modifier, string unmodifiedType, bool isRequired) => unmodifiedType + (isRequired ? " modreq(" : " modopt(") + modifier + ")";
-    public string GetPinnedType(string elementType) => elementType + " pinned";
-    public string GetPointerType(string elementType) => elementType + "*";
-    public string GetPrimitiveType(PrimitiveTypeCode typeCode) => typeCode switch
+            + (i < shape.Sizes.Length ? ((i < shape.LowerBounds.Length ? shape.LowerBounds[i] : 0) + shape.Sizes[i] - 1).ToString(CultureInfo.InvariantCulture) : ""))) + "]");
+    public SignatureType GetByReferenceType(SignatureType elementType) => new(elementType.PostfixOperand + "&", elementType);
+    public SignatureType GetFunctionPointerType(MethodSignature<SignatureType> signature)
+        => new("methodptr[" + signature.Header.CallingConvention + "](" + string.Join(", ", signature.ParameterTypes) + ")->" + signature.ReturnType.Text,
+            IsFunctionPointer: true);
+    public SignatureType GetGenericInstantiation(SignatureType genericType, ImmutableArray<SignatureType> typeArguments)
+        => new(genericType.Text + "<" + string.Join(", ", typeArguments) + ">");
+    public SignatureType GetGenericMethodParameter(Context context, int index) => new(index < context.MethodParameters.Length ? context.MethodParameters[index] : "!!" + index);
+    public SignatureType GetGenericTypeParameter(Context context, int index) => new(index < context.TypeParameters.Length ? context.TypeParameters[index] : "!" + index);
+    public SignatureType GetModifiedType(SignatureType modifier, SignatureType unmodifiedType, bool isRequired)
+        => unmodifiedType.Modified((isRequired ? " modreq(" : " modopt(") + modifier.Text + ")");
+    public SignatureType GetPinnedType(SignatureType elementType) => new(elementType.PostfixOperand + " pinned");
+    public SignatureType GetPointerType(SignatureType elementType) => new(elementType.PostfixOperand + "*");
+    public SignatureType GetPrimitiveType(PrimitiveTypeCode typeCode) => new(typeCode switch
     {
         PrimitiveTypeCode.Void => "System.Void", PrimitiveTypeCode.Boolean => "System.Boolean", PrimitiveTypeCode.Char => "System.Char",
         PrimitiveTypeCode.SByte => "System.SByte", PrimitiveTypeCode.Byte => "System.Byte", PrimitiveTypeCode.Int16 => "System.Int16", PrimitiveTypeCode.UInt16 => "System.UInt16",
@@ -556,11 +583,11 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
         PrimitiveTypeCode.Single => "System.Single", PrimitiveTypeCode.Double => "System.Double", PrimitiveTypeCode.String => "System.String", PrimitiveTypeCode.Object => "System.Object",
         PrimitiveTypeCode.IntPtr => "System.IntPtr", PrimitiveTypeCode.UIntPtr => "System.UIntPtr", PrimitiveTypeCode.TypedReference => "System.TypedReference",
         _ => throw new BadImageFormatException("Unknown primitive signature code.")
-    };
-    public string GetSZArrayType(string elementType) => elementType + "[]";
-    public string GetSystemType() => "System.Type";
-    public bool IsSystemType(string type) => type == "System.Type";
-    public string GetTypeFromSerializedName(string name) => name;
-    public PrimitiveTypeCode GetUnderlyingEnumType(string type) => type == "System.Runtime.InteropServices.ExtendedLayoutKind"
+    });
+    public SignatureType GetSZArrayType(SignatureType elementType) => new(elementType.PostfixOperand + "[]");
+    public SignatureType GetSystemType() => new("System.Type");
+    public bool IsSystemType(SignatureType type) => type.Text == "System.Type";
+    public SignatureType GetTypeFromSerializedName(string name) => new(name);
+    public PrimitiveTypeCode GetUnderlyingEnumType(SignatureType type) => type.Text == "System.Runtime.InteropServices.ExtendedLayoutKind"
         ? PrimitiveTypeCode.Int32 : throw new BadImageFormatException($"Enum {type} is not decoded in custom attributes.");
 }
