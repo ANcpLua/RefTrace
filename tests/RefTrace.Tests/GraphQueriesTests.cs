@@ -47,6 +47,28 @@ public sealed class GraphQueriesTests
     }
 
     [TestMethod]
+    public void Check_OverlappingRulesKeepEachMatchAndItsDeterministicShortestPath()
+    {
+        var graph = Fixtures.Read();
+        var root = graph.Nodes.Single(n => n.Id == graph.RootId);
+        var alpha = graph.Nodes.Single(n => n.Id == "Alpha");
+        var beta = graph.Nodes.Single(n => n.Id == "Beta");
+        graph = graph with
+        {
+            Nodes = [root, alpha, beta, alpha with { Id = "Isolated" }, alpha with { Id = "Zeta" }],
+            Edges = [new(root.Id, "Zeta", ""), new(root.Id, "Alpha", ""), new("Zeta", "Beta", ""),
+                new("ALPHA", "beta", ""), new("Beta", "Alpha", "")]
+        };
+
+        var report = GraphQueries.Check(graph, ["*", "b*"], []);
+
+        Assert.AreSequenceEqual(
+            [("Alpha", "*", "$project/Alpha"), ("Beta", "*", "$project/Alpha/Beta"),
+                ("Beta", "b*", "$project/Alpha/Beta"), ("Isolated", "*", ""), ("Zeta", "*", "$project/Zeta")],
+            report.Violations.Select(v => (v.Dependency.Id, v.Pattern, string.Join('/', v.Path.Select(n => n.Id)))));
+    }
+
+    [TestMethod]
     public void Check_ForbiddenProjectPath_MatchesRecordedProject()
     {
         var report = GraphQueries.Check(Fixtures.Read(), [], ["*/App.Core.csproj"]);
