@@ -101,9 +101,11 @@ The `debug-trace` skill in [`plugins/debug-trace`](plugins/debug-trace) brings t
 `AGENTS.md` entry: it loads by itself when an agent debugs a failure or traces a request or dependency, in any
 language, and reaches for `ref` where .NET is involved. This repository is also its plugin marketplace.
 
-- Claude Code: `/plugin install debug-trace --marketplace ANcpLua/RefTrace`
+- Claude Code: `/plugin install debug-trace --marketplace ANcpLua/RefTrace`. As of 2026-11-27, Claude Code
+  updates marketplaces outside Anthropic's only when asked: turn on auto-update for `reftrace` under `/plugin`,
+  Marketplaces, so a push to this repository reaches your sessions.
 - claude.ai and the Claude app: Customize, Plugins, Add marketplace `ANcpLua/RefTrace`, then turn on
-  `debug-trace`. Cloud sessions of Claude Code load it from there too.
+  `debug-trace`. As of 2026-11-27, the Claude Code docs say cloud sessions load the plugins enabled there.
 - Codex: link `plugins/debug-trace/skills/debug-trace` into `~/.agents/skills/`.
 
 ## Examples
