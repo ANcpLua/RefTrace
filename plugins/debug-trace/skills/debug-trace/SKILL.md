@@ -21,6 +21,7 @@ When asked to upgrade RefTrace 0.12.0 or later, use `update` through the same co
 | Question | Command | Evidence |
 | --- | --- | --- |
 | Why is this NuGet package here? | `ref why <package> <project> --json` | One shortest path in the last restore. Use `ref packages <project> --json` for the resolved inventory. |
+| Which dependencies violate a project boundary? | `ref check <project> --forbid-package 'Legacy.*' --forbid-project '*.Tests.csproj' --json` | Repeat either option to check all patterns against the same restore. Each violation records the matching pattern and the shortest path when reachable. |
 | Which API or reflection call is in this DLL? | `ref assembly <dll> --type 'Namespace.Type' --json` or `ref reflection <dll> --json` | Declared signatures or static IL call sites in a managed assembly. |
 | Which assembly did this process load? | `ref processes --json`, then `ref runtime --pid <pid> --seconds 1 --json` | CLR loader events and rundown for the selected PID. This also works for a foreign host that exposes compatible .NET diagnostics. |
 | Which SDK was selected? | `ref sdk <directory> --json` | The .NET SDK selected in that directory. This can succeed in a pure Node or Python project. |

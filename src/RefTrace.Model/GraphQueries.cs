@@ -6,30 +6,34 @@ public static class GraphQueries
 {
     public static DependencyTrace Explain(DependencyGraph graph, string dependency)
     {
-        var nodes = graph.Nodes.ToDictionary(n => n.Id, StringComparer.OrdinalIgnoreCase);
-        if (!nodes.TryGetValue(dependency, out var destination))
-            return new(dependency, false, []);
+        var path = new DependencyPaths(graph).Find(dependency);
+        return new(dependency, path.Count != 0, path);
+    }
 
-        var outgoing = graph.Edges.ToLookup(e => e.From, StringComparer.OrdinalIgnoreCase);
-        var previous = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase) { [graph.RootId] = null };
-        var queue = new Queue<string>();
-        queue.Enqueue(graph.RootId);
-        while (queue.TryDequeue(out var current))
+    // One breadth-first search per graph query. Later matches resume from the existing frontier.
+    private sealed class DependencyPaths(DependencyGraph graph)
+    {
+        private readonly Dictionary<string, DependencyNode> _nodes = graph.Nodes.ToDictionary(n => n.Id, StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string?> _previous = new(StringComparer.OrdinalIgnoreCase) { [graph.RootId] = null };
+        private readonly Queue<string> _pending = new([graph.RootId]);
+        private ILookup<string, DependencyEdge>? _outgoing;
+
+        public IReadOnlyList<DependencyNode> Find(string destination)
         {
-            if (string.Equals(current, destination.Id, StringComparison.OrdinalIgnoreCase))
+            if (!_nodes.ContainsKey(destination)) return [];
+            while (!_previous.ContainsKey(destination))
             {
-                var path = new List<DependencyNode>();
-                for (string? id = current; id is not null; id = previous[id])
-                    path.Add(nodes[id]);
-                path.Reverse();
-                return new(dependency, true, path.ToArray());
+                if (!_pending.TryDequeue(out var current)) return [];
+                _outgoing ??= graph.Edges.ToLookup(e => e.From, StringComparer.OrdinalIgnoreCase);
+                foreach (var edge in _outgoing[current].OrderBy(e => e.To, StringComparer.OrdinalIgnoreCase))
+                    if (_previous.TryAdd(edge.To, current)) _pending.Enqueue(edge.To);
             }
-            foreach (var edge in outgoing[current].OrderBy(e => e.To, StringComparer.OrdinalIgnoreCase))
-            {
-                if (previous.TryAdd(edge.To, current)) queue.Enqueue(edge.To);
-            }
+            var path = new List<DependencyNode>();
+            for (string? id = destination; id is not null; id = _previous[id])
+                path.Add(_nodes[id]);
+            path.Reverse();
+            return path.ToArray();
         }
-        return new(dependency, false, []);
     }
 
     public static PolicyReport Check(DependencyGraph graph,
@@ -47,6 +51,7 @@ public static class GraphQueries
             throw new InspectionException("inconclusive-policy", "A forbidden pattern matches an unresolved dependency constraint. No pass/fail conclusion can be drawn for that dependency.");
 
         var violations = new List<PolicyViolation>();
+        DependencyPaths? paths = null;
         foreach (var node in graph.Nodes)
         {
             var patterns = node.Kind switch
@@ -62,7 +67,10 @@ public static class GraphQueries
                     matches = FileSystemName.MatchesSimpleExpression(pattern.Replace('\\', '/'),
                         node.ProjectPath.Replace('\\', '/'), ignoreCase: OperatingSystem.IsWindows());
                 if (matches)
-                    violations.Add(new(pattern, node, Explain(graph, node.Id).Path));
+                {
+                    paths ??= new DependencyPaths(graph);
+                    violations.Add(new(pattern, node, paths.Find(node.Id)));
+                }
             }
         }
         return new(graph.SourcePath, graph.Target, violations.Count == 0, violations.ToArray(), unresolved);
