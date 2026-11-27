@@ -7,7 +7,7 @@
     <MeziantouAnalysisMode>None</MeziantouAnalysisMode>
     <!-- C# 15 runtime async: async methods compile without state machines. See docs/ASYNC-THREADING.md. -->
     <Features>$(Features);runtime-async=on</Features>
-    <Version>0.11.1</Version>
+    <Version>0.12.0</Version>
     <Authors>Alexander Nachtmann</Authors>
     <RepositoryUrl>https://github.com/ANcpLua/RefTrace</RepositoryUrl>
     <RepositoryType>git</RepositoryType>

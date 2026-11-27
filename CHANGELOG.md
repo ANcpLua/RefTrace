@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.12.0
 
 * Add `ref update` and `ref --update` to update the running .NET tool installation. See
   `ref help update` for the feed option and the technical reference for Windows completion receipts.
