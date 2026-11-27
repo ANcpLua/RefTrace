@@ -15,7 +15,9 @@ ref help
 ```
 
 The package is **RefTrace**; the command is **ref**. It needs the .NET 11 runtime.
-`dotnet tool update --global RefTrace` moves to a newer version. To pin the version per repository, install it into
+`ref update` or `ref --update` asks the .NET SDK to update the running installation to the latest stable version.
+Use `ref help update` for options and `ref version` to check the result. For a global version that predates
+this command, use `dotnet tool update --global RefTrace`. To pin the version per repository, install it into
 a tool manifest and call `dotnet tool run ref`:
 
 ```sh

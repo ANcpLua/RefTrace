@@ -233,6 +233,7 @@ public static partial class CliApplication
         root.Subcommands.Add(runtime);
 
         AddReviewCommand(root, json, plain, output, error);
+        AddUpdateCommand(root, json, plain, output, error);
         CliHelp.Configure(root, output, error);
         var parsed = root.Parse(args.Length == 0 ? ["--help"] : args);
         if (parsed.Errors.Count != 0)

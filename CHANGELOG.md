@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.12.0
+
+* Add `ref update` and `ref --update` to update the running .NET tool installation. See
+  `ref help update` for the feed option and the technical reference for Windows completion receipts.
+* Preserve the outer parameter's by-reference kind, including `ref readonly`, custom modifiers and
+  function-pointer parameters whose own return type is by reference. Escape an apostrophe in character
+  defaults and constants.
+* Filter union case reports by the signatures of the provider's eligible factory methods.
+
 ## 0.11.1
 
 * Fractional durations accept a decimal point in every locale and the local decimal separator.

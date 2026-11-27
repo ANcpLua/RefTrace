@@ -9,7 +9,7 @@ public sealed class LanguageMetadataTests
 {
     private const string Namespace = "RefTrace.LanguageFixture.";
 
-    private static string FixturePath()
+    internal static string FixturePath()
     {
         var configuration = new DirectoryInfo(AppContext.BaseDirectory).Name;
         return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..",

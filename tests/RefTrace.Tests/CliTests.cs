@@ -128,7 +128,7 @@ public sealed class CliTests(TestContext context)
         Assert.Contains("Usage: ref <command>", result.Output);
         Assert.Contains("Details: ref help <command>", result.Output);
         Assert.DoesNotContain("RefTrace.Cli", result.Output);
-        Assert.IsLessThanOrEqualTo(21, result.Output.Split('\n').Length);
+        Assert.IsLessThanOrEqualTo(22, result.Output.Split('\n').Length);
     }
 
     [TestMethod]
@@ -185,6 +185,33 @@ public sealed class CliTests(TestContext context)
         Assert.AreEqual(2, extra.Exit);
         Assert.Contains("unexpected", extra.Error);
         Assert.Contains("version", (await RunAsync("help")).Output);
+    }
+
+    [TestMethod]
+    [DataRow("update")]
+    [DataRow("--update")]
+    public async Task Update_HelpDescribesTheInstalledToolAndItsSource(string command)
+    {
+        var help = await RunAsync(command, "--help");
+        Assert.AreEqual(0, help.Exit);
+        Assert.AreEqual((await RunAsync("help", "update")).Output, help.Output);
+        Assert.Contains("--source", help.Output);
+        Assert.Contains("--update", (await RunAsync("help")).Output);
+    }
+
+    [TestMethod]
+    [DataRow("update")]
+    [DataRow("--update")]
+    public async Task Update_FromBuildOutputLeavesInstalledToolsAlone(string command)
+    {
+        var result = await RunAsync(command, "--json");
+        Assert.AreEqual(2, result.Exit);
+        using var json = JsonDocument.Parse(result.Output);
+        Assert.AreEqual("unsupported-installation", json.RootElement.GetProperty("data").GetProperty("code").GetString());
+        var unexpected = await RunAsync(command, "unexpected", "--json");
+        Assert.AreEqual(2, unexpected.Exit);
+        using var invalid = JsonDocument.Parse(unexpected.Output);
+        Assert.AreEqual("invalid-argument", invalid.RootElement.GetProperty("data").GetProperty("code").GetString());
     }
 
     [TestMethod]

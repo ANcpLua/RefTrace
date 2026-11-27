@@ -65,7 +65,8 @@ public sealed class JsonEnvelopeTests
             typeof(ReportEnvelope<RuntimeReport>), typeof(ReportEnvelope<SdkReport>),
             typeof(ReportEnvelope<PackageReport>), typeof(ReportEnvelope<ReflectionReport>),
             typeof(ReportEnvelope<AotInspectionReport>), typeof(ReportEnvelope<AotPublishReport>),
-            typeof(ReportEnvelope<PackageReleaseReport>), typeof(ReportEnvelope<ReviewReport>)
+            typeof(ReportEnvelope<PackageReleaseReport>), typeof(ReportEnvelope<ReviewReport>),
+            typeof(ReportEnvelope<ToolUpdateReport>)
         ];
         foreach (var envelopeType in envelopeTypes)
         {

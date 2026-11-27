@@ -50,3 +50,5 @@ jobs:
           project="$PWD/src/RefTrace.Cli/RefTrace.Cli.csproj"
           cd "$RUNNER_TEMP"
           "$command" review "$project" --catalog-only --offline --package '__no_package_matches__' --output "$RUNNER_TEMP/reftrace-review-smoke" --json
+      - name: Update installed RefTrace tools
+        run: uv run --frozen python tooling/smoke_update.py

@@ -56,7 +56,7 @@ internal static class CliHelp
         var width = rows.Max(item => item.Label.Length) + 2;
         foreach (var item in rows) output.WriteLine("  " + item.Label.PadRight(width) + item.Description);
         output.WriteLine();
-        output.WriteLine("Options: --json  --plain  --version");
+        output.WriteLine("Options: --json  --plain  --version  --update");
         output.WriteLine("Details: ref help <command>");
     }
 
