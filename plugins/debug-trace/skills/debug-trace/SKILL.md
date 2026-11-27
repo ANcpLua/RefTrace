@@ -14,7 +14,9 @@ In a mixed repository, follow the failing test, frame, request, or dependency to
 
 ## RefTrace
 
-The NuGet tool `RefTrace` 0.11 requires the .NET 11 runtime. Invoke it as `ref`, or use `dotnet tool run ref -- …` when the repository pins it in a tool manifest. If RefTrace is unavailable, continue with the project's existing diagnostics.
+The NuGet tool `RefTrace` runs on .NET 11. Invoke it as `ref`, or use `dotnet tool run ref -- …` when the repository pins it in a tool manifest. Check `version` through that same installation when diagnosing version-dependent behavior. If RefTrace is unavailable, continue with the project's existing diagnostics.
+
+When asked to upgrade RefTrace 0.12.0 or later, use `update` through the same command prefix. An older copy needs `dotnet tool update` with its original installation scope. For a Windows shim reporting `scheduled`, read the reported completion file for the SDK outcome before confirming the new version.
 
 | Question | Command | Evidence |
 | --- | --- | --- |
