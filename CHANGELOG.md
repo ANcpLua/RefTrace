@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.1
+
+* Fractional durations accept a decimal point in every locale and the local decimal separator.
+  Under `de_AT`, both `0.25` and `0,25` work for `ref runtime --seconds`, `ref runtime --timeout`
+  and `ref aot publish --timeout`.
+* `make check` restores and builds the solution before running InspectCode. The report includes
+  suggestions, and warnings or errors fail the gate.
+
 ## 0.11.0
 
 * Add `ref version`. It prints the same line as `ref --version`, the package version and the commit it was built

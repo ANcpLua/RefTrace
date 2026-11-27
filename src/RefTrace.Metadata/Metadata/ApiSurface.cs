@@ -16,8 +16,8 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
 
     private const string RequiresUnsafeAttribute = "System.Diagnostics.CodeAnalysis.RequiresUnsafeAttribute";
     private const string ByRefLikeAttribute = "System.Runtime.CompilerServices.IsByRefLikeAttribute";
-    private readonly MetadataNames names = new(reader);
-    private readonly int? memorySafetyRules = PeMetadata.MemorySafetyRulesVersion(reader);
+    private readonly MetadataNames _names = new(reader);
+    private readonly int? _memorySafetyRules = PeMetadata.MemorySafetyRulesVersion(reader);
 
     public IReadOnlyList<ApiType> Read(string pattern)
     {
@@ -39,7 +39,7 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
                 "System.Enum" => "enum", "System.ValueType" => "struct", "System.MulticastDelegate" => "delegate", _ => "class"
             };
             var attributes = type.GetCustomAttributes().Select(reader.GetCustomAttribute)
-                .ToLookup(attribute => names.Method(attribute.Constructor).Type, StringComparer.Ordinal);
+                .ToLookup(attribute => _names.Method(attribute.Constructor).Type, StringComparer.Ordinal);
             var closed = attributes["System.Runtime.CompilerServices.IsClosedTypeAttribute"].ToArray();
             var layout = Layout(type, kind, attributes["System.Runtime.InteropServices.ExtendedLayoutAttribute"].ToArray());
             result.Add(new(name, kind, Generics(type.GetGenericParameters(), context), baseType,
@@ -148,7 +148,7 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
         {
             foreach (var attribute in attributes.Select(reader.GetCustomAttribute))
             {
-                if (names.Method(attribute.Constructor).Type != "System.Runtime.CompilerServices.ExtensionMarkerAttribute") continue;
+                if (_names.Method(attribute.Constructor).Type != "System.Runtime.CompilerServices.ExtensionMarkerAttribute") continue;
                 if (attribute.DecodeValue(this).FixedArguments is not [{ Value: string markerName }]
                     || !markers.TryGetValue(markerName, out var marker)) return fallback;
                 var handle = marker.GetMethods().FirstOrDefault(h => reader.GetString(reader.GetMethodDefinition(h).Name) == "<Extension>$");
@@ -171,7 +171,7 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
     {
         var type = reader.GetTypeDefinition(handle);
         return IsUnspeakable(type, reader) && type.GetCustomAttributes()
-            .Any(h => names.Method(reader.GetCustomAttribute(h).Constructor).Type == "System.Runtime.CompilerServices.ExtensionAttribute");
+            .Any(h => _names.Method(reader.GetCustomAttribute(h).Constructor).Type == "System.Runtime.CompilerServices.ExtensionAttribute");
     }
 
     // Grouping (<G>$...) and marker (<M>$...) types are compiler scaffolding for extension blocks.
@@ -186,24 +186,34 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
     private bool? RequiresUnsafe(IEnumerable<CustomAttributeHandleCollection> attributes)
     {
         if (attributes.SelectMany(collection => collection)
-            .Any(handle => names.Method(reader.GetCustomAttribute(handle).Constructor).Type == RequiresUnsafeAttribute)) return true;
-        return memorySafetyRules >= 2 ? false : null;
+            .Any(handle => _names.Method(reader.GetCustomAttribute(handle).Constructor).Type == RequiresUnsafeAttribute)) return true;
+        return _memorySafetyRules >= 2 ? false : null;
     }
 
     // The compiler takes a [Union] type's cases from the static Create methods of a nested IUnionMembers
     // provider when there is one, otherwise from its public single-parameter constructors.
     private IReadOnlyList<string> UnionCases(TypeDefinition type, IReadOnlyList<ApiMember> members)
     {
-        var provider = type.GetNestedTypes().Select(reader.GetTypeDefinition)
-            .Where(nested => (nested.Attributes & TypeAttributes.Interface) != 0 && reader.GetString(nested.Name) == "IUnionMembers")
-            .Select(nested => (Definition: nested, Context: new Context(Names(nested.GetGenericParameters()), [])))
-            .FirstOrDefault();
-        var parameters = provider.Definition.Equals(default(TypeDefinition))
-            ? members.Where(m => m is { Kind: "constructor", Accessibility: "public", IsStatic: false, Parameters.Count: 1 }).Select(m => m.Parameters[0].Type)
-            : provider.Definition.GetMethods().Select(reader.GetMethodDefinition)
+        var providerHandle = type.GetNestedTypes().FirstOrDefault(handle =>
+        {
+            var nested = reader.GetTypeDefinition(handle);
+            return (nested.Attributes & TypeAttributes.Interface) != 0 && reader.StringComparer.Equals(nested.Name, "IUnionMembers");
+        });
+        IEnumerable<string> parameters;
+        if (providerHandle.IsNil)
+        {
+            parameters = members.Where(m => m is { Kind: "constructor", Accessibility: "public", IsStatic: false, Parameters.Count: 1 })
+                .Select(m => m.Parameters[0].Type);
+        }
+        else
+        {
+            var provider = reader.GetTypeDefinition(providerHandle);
+            var context = new Context(Names(provider.GetGenericParameters()), []);
+            parameters = provider.GetMethods().Select(reader.GetMethodDefinition)
                 .Where(method => (method.Attributes & MethodAttributes.Static) != 0 && reader.GetString(method.Name) == "Create")
-                .Select(method => method.DecodeSignature(this, provider.Context).ParameterTypes)
+                .Select(method => method.DecodeSignature(this, context).ParameterTypes)
                 .Where(types => types.Length == 1).Select(types => types[0]);
+        }
         // A case passed by reference (an in parameter) is still the value type itself.
         return parameters.Select(parameter => parameter.TrimEnd('&')).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
     }
@@ -324,7 +334,7 @@ internal sealed class ApiSurface(MetadataReader reader) : ISignatureTypeProvider
                 var index = blob.ReadCompressedInteger();
                 var parameters = owner.GetGenericParameters();
                 var unmanaged = index < parameters.Count && reader.GetGenericParameter(parameters[index]).GetCustomAttributes()
-                    .Any(h => names.Method(reader.GetCustomAttribute(h).Constructor).Type == "System.Runtime.CompilerServices.IsUnmanagedAttribute");
+                    .Any(h => _names.Method(reader.GetCustomAttribute(h).Constructor).Type == "System.Runtime.CompilerServices.IsUnmanagedAttribute");
                 return unmanaged ? (Content.Clean, "") : (Content.Undecided, "is a type parameter without an unmanaged constraint");
             default:
                 return (Content.Clean, "");

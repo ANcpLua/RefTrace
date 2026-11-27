@@ -385,7 +385,7 @@ public static partial class CliApplication
             $"Informational version: {report.InformationalVersion ?? "not recorded"}",
             $"MVID: {report.ModuleVersionId}",
             $"Reference assembly: {report.IsReferenceAssembly}",
-            $"Memory-safety rules: {report.MemorySafetyRulesVersion?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "not recorded"}",
+            $"Memory-safety rules: {report.MemorySafetyRulesVersion?.ToString(CultureInfo.InvariantCulture) ?? "not recorded"}",
             $"Evidence: {report.SourcePath}",
             "Static assembly references:",
             .. report.References.Select(r => $"  {r.Name}, Version={r.Version}, PublicKeyToken={r.PublicKeyToken ?? "none"}")

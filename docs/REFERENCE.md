@@ -259,6 +259,13 @@ its detailed saved `report.json` has its own schema version 2.
 
 ## Develop and test
 
+From the repository root, run `make check` with the pinned .NET SDK, Make, and uv.
+It restores and builds the Release solution, runs the .NET and Python tooling tests,
+and runs the version of JetBrains InspectCode pinned in `dotnet-tools.json`.
+`make inspect` runs the inspection gate on its own. It prints findings with their
+locations and saves the complete report, including suggestions, to
+`artifacts/inspectcode.sarif`. Linux CI runs the same inspection gate.
+
 ```sh
 dotnet build RefTrace.slnx -c Release
 dotnet test --solution RefTrace.slnx -c Release --report-trx
@@ -316,7 +323,7 @@ RefTrace is not a vulnerability scanner; a passed dependency policy is not a sec
 
 ```sh
 dotnet pack src/RefTrace.Cli/RefTrace.Cli.csproj -c Release -o artifacts/packages
-dotnet tool install RefTrace --version 0.11.0 --source ./artifacts/packages --tool-path ./artifacts/tools
+dotnet tool install RefTrace --version 0.11.1 --source ./artifacts/packages --tool-path ./artifacts/tools
 ./artifacts/tools/ref --help
 ```
 

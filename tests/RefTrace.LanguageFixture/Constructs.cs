@@ -14,6 +14,8 @@ public readonly struct HandWrittenOutcome
 {
     public HandWrittenOutcome(Approved value) => Value = value;
     public HandWrittenOutcome(Declined value) => Value = value;
+    // The metadata tests inspect this union getter without loading the fixture.
+    // ReSharper disable once UnusedAutoPropertyAccessor.Global
     public object? Value { get; }
 }
 
@@ -21,9 +23,9 @@ public readonly struct HandWrittenOutcome
 [Union]
 public sealed class ProvidedOutcome : ProvidedOutcome.IUnionMembers
 {
-    private readonly object? value;
+    private readonly object? _value;
 
-    private ProvidedOutcome(object? value) => this.value = value;
+    private ProvidedOutcome(object? value) => _value = value;
 
     public interface IUnionMembers
     {
@@ -32,7 +34,7 @@ public sealed class ProvidedOutcome : ProvidedOutcome.IUnionMembers
         object? Value { get; }
     }
 
-    object? IUnionMembers.Value => value;
+    object? IUnionMembers.Value => _value;
 }
 
 [Union]
@@ -40,6 +42,8 @@ public readonly struct Measurement
 {
     public Measurement(in int count) => Value = count;
     public Measurement(string label) => Value = label;
+    // The metadata tests inspect this union getter without loading the fixture.
+    // ReSharper disable once UnusedAutoPropertyAccessor.Global
     public object? Value { get; }
 }
 

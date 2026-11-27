@@ -12,12 +12,12 @@ public sealed class PublishAgePolicy
 {
     public const string NuGetOrg = "https://api.nuget.org/v3/index.json";
 
-    private readonly MinPublishAgeExceptions exceptions;
+    private readonly MinPublishAgeExceptions _exceptions;
 
     private PublishAgePolicy(PublishAgeSetting setting, MinPublishAgeExceptions exceptions)
     {
         Setting = setting;
-        this.exceptions = exceptions;
+        _exceptions = exceptions;
     }
 
     public PublishAgeSetting Setting { get; }
@@ -51,7 +51,7 @@ public sealed class PublishAgePolicy
     public PublishAgeCheck Check(string packageId, string? published, DateTimeOffset collectedAt)
     {
         if (Setting.SourceName is null) return new("source-not-configured", published, null, 0, null);
-        if (exceptions.FindException(packageId) is { } exception)
+        if (_exceptions.FindException(packageId) is { } exception)
             return new("excepted", published, null, Setting.MinimumHours, exception.Pattern);
         if (Setting.MinimumHours == 0) return new("no-minimum", published, null, 0, null);
         if (!DateTimeOffset.TryParse(published, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var date))

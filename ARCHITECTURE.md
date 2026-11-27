@@ -45,9 +45,10 @@ do not read every property. The generated serializers are their production consu
 
 `RefTrace.sln.DotSettings` includes source-generated files in JetBrains solution-wide
 analysis so those reads participate in unused-member checks. Rider uses this shared
-solution setting, and `make inspect` explicitly loads it with solution-wide analysis
-enabled. Excluding generated files can incorrectly flag these properties as unread.
-Inspection severities remain unchanged, and genuinely unread properties still warn.
+solution setting. `make inspect` restores and builds the Release solution before running
+the pinned InspectCode tool with the same configuration, solution-wide analysis, and
+shared settings. The gate reads the resulting SARIF and fails on warnings or errors.
+The full report includes suggestions for review.
 
 ## Different questions require different evidence
 

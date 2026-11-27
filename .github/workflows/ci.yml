@@ -25,7 +25,11 @@ jobs:
           version: "0.13.5"
       - name: Test package-audit tooling
         run: uv run --frozen python -m unittest discover -s tooling/tests -v
+      - name: Build and inspect
+        if: runner.os == 'Linux'
+        run: make inspect
       - name: Build
+        if: runner.os != 'Linux'
         run: dotnet build RefTrace.slnx --configuration Release "-bl:artifacts/build-{}.binlog"
       - name: Test
         run: dotnet test --solution RefTrace.slnx --configuration Release --no-build --report-trx --coverage --coverage-output-format cobertura --results-directory artifacts/test-results "-bl:artifacts/test-{}.binlog"
