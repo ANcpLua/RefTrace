@@ -59,7 +59,8 @@ identified by the SDK in the current project. The command requires the .NET SDK.
 
 For synchronous updates the `update` report includes the target, outcome, SDK exit code, stdout
 and stderr. On Windows a running shim locks files the SDK needs to replace. The command starts
-a Windows PowerShell worker and returns `scheduled` with a `resultFile` path. That file appears
+a Windows PowerShell worker and returns `scheduled` with a `resultFile` path once the worker
+acknowledges the handoff. That file appears
 after the shim exits and the SDK finishes. It contains the final outcome, exit code and output.
 Read it, check `ref version`, and discard it when done.
 

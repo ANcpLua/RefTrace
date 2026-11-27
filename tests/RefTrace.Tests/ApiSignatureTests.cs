@@ -70,11 +70,12 @@ public sealed class ApiSignatureTests
     {
         const string pointer = "methodptr[Default]()->System.Int32";
         var overloads = ReadByReferenceFixture("ByReference").Members.Where(m => m.Name == "Callback").ToArray();
+        foreach (var overload in overloads) Assert.IsFalse(overload.RequiresUnsafe, overload.Signature);
         CollectionAssert.AreEquivalent(new[]
         {
-            (pointer + "&", "value", $"public unsafe System.Void Callback({pointer}& callback)"),
-            ("(" + pointer + ")&", "ref", $"public unsafe System.Void Callback(ref {pointer} callback)"),
-            ("(" + pointer + "&)&", "ref", $"public unsafe System.Void Callback(ref {pointer}& callback)")
+            (pointer + "&", "value", $"public System.Void Callback({pointer}& callback)"),
+            ("(" + pointer + ")&", "ref", $"public System.Void Callback(ref {pointer} callback)"),
+            ("(" + pointer + "&)&", "ref", $"public System.Void Callback(ref {pointer}& callback)")
         }, overloads.Select(m => (m.Parameters.Single().Type, m.Parameters.Single().Passing, m.Signature)).ToArray());
     }
 

@@ -12,9 +12,9 @@ public abstract class ByReference
 
     public virtual unsafe void Suppressed(in delegate* unmanaged[Cdecl, SuppressGCTransition]<ref int> callback) { }
 
-    public unsafe void Callback(delegate*<ref int> callback) { }
-    public unsafe void Callback(ref delegate*<int> callback) { }
-    public unsafe void Callback(ref delegate*<ref int> callback) { }
+    public void Callback(delegate*<ref int> callback) { }
+    public void Callback(ref delegate*<int> callback) { }
+    public void Callback(ref delegate*<ref int> callback) { }
 }
 
 public static class ByReferenceExtensions

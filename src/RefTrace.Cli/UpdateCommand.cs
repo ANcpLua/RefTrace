@@ -71,7 +71,7 @@ public static partial class CliApplication
         {
             target = shimDirectory.FullName;
             selector = "--tool-path";
-            if (OperatingSystem.IsWindows()) return ScheduleWindowsShimUpdate(target, source, cwd);
+            if (OperatingSystem.IsWindows()) return await ScheduleWindowsShimUpdateAsync(target, source, cwd, token).ConfigureAwait(false);
         }
         else
         {
@@ -89,7 +89,7 @@ public static partial class CliApplication
                     && item.TryGetProperty("version", out var version)
                     && string.Equals(version.GetString(), installedVersion.Name, StringComparison.OrdinalIgnoreCase))
                 .Select(item => item.TryGetProperty("manifest", out var path) ? path.GetString() : null).Distinct().ToArray();
-            if (manifests is not [string manifest] || !Path.IsPathFullyQualified(manifest) || !File.Exists(manifest))
+            if (manifests is not [{ } manifest] || !Path.IsPathFullyQualified(manifest) || !File.Exists(manifest))
                 throw new InspectionException("unsupported-installation", "Cannot identify the manifest for this copy of RefTrace. Run the command in the project that pins it.");
             target = manifest;
             selector = "--tool-manifest";
@@ -102,15 +102,21 @@ public static partial class CliApplication
 
     // Windows locks the running shim. Let a worker outside the tool store wait for this process to exit
     // before the SDK replaces it. Inputs are environment data, never interpolated into PowerShell code.
-    private static ToolUpdateReport ScheduleWindowsShimUpdate(string target, string source, string cwd)
+    private static async Task<ToolUpdateReport> ScheduleWindowsShimUpdateAsync(string target, string source, string cwd,
+        CancellationToken token)
     {
         var receipt = Path.Combine(Path.GetTempPath(), $"reftrace-update-{Guid.NewGuid():N}.json");
         var powershell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),
             "WindowsPowerShell", "v1.0", "powershell.exe");
+        // Windows PowerShell requires a console screen buffer even in noninteractive mode.
+        // Give it a hidden console and its own pipes so it can outlive the calling shell command.
+        using var nullHandle = File.OpenNullHandle();
         var worker = new ProcessStartInfo(powershell)
         {
-            WorkingDirectory = cwd, UseShellExecute = false, StartDetached = true, InheritedHandles = []
+            WorkingDirectory = cwd, UseShellExecute = false, CreateNoWindow = true, InheritedHandles = [],
+            StandardInputHandle = nullHandle, StandardErrorHandle = nullHandle, RedirectStandardOutput = true
         };
+        worker.ArgumentList.Add("-NoLogo");
         worker.ArgumentList.Add("-NoProfile");
         worker.ArgumentList.Add("-NonInteractive");
         worker.ArgumentList.Add("-Command");
@@ -118,8 +124,9 @@ public static partial class CliApplication
             $ErrorActionPreference = 'Stop'
             $code = 1
             try {
-                $parent = Get-Process -Id $env:REFTRACE_UPDATE_PARENT -ErrorAction SilentlyContinue
-                if ($parent) { $parent.WaitForExit() }
+                [Console]::Out.WriteLine('reftrace-update-ready')
+                [Console]::Out.Flush()
+                Wait-Process -Id $env:REFTRACE_UPDATE_PARENT -ErrorAction SilentlyContinue
                 $sdk = (Get-Command dotnet.exe -CommandType Application | Select-Object -First 1).Source
                 $ErrorActionPreference = 'Continue'
                 $messages = & $sdk tool update RefTrace --tool-path $env:REFTRACE_UPDATE_TARGET --source $env:REFTRACE_UPDATE_SOURCE 2>&1
@@ -142,6 +149,21 @@ public static partial class CliApplication
         try
         {
             using var process = Process.Start(worker) ?? throw new InspectionException("tool-unavailable", "Cannot start the Windows updater.");
+            using var startup = CancellationTokenSource.CreateLinkedTokenSource(token);
+            startup.CancelAfter(TimeSpan.FromSeconds(30));
+            try
+            {
+                if (await process.StandardOutput.ReadLineAsync(startup.Token).ConfigureAwait(false) != "reftrace-update-ready")
+                    throw new InspectionException("tool-unavailable", "Windows PowerShell exited before accepting the update.");
+            }
+            catch
+            {
+                try { process.Kill(entireProcessTree: true); }
+                catch (InvalidOperationException) { /* worker already exited */ }
+                if (startup.IsCancellationRequested && !token.IsCancellationRequested)
+                    throw new InspectionException("timeout", "Windows PowerShell did not acknowledge the update in time.");
+                throw;
+            }
             return new(target, "scheduled", ResultFile: receipt);
         }
         catch { File.Delete(receipt + ".tmp"); throw; }
