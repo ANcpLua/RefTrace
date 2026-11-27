@@ -46,6 +46,10 @@ project paths follow the current operating system's case sensitivity. Public typ
 match case-sensitively and use metadata names, including `+` for nesting and a backtick
 followed by the generic parameter count.
 
+`--seconds` and `--timeout` accept a decimal point in every locale, as well as the local
+decimal separator. For example, under `de_AT`, `0.25` and `0,25` both mean a quarter
+of a second. Omit thousands separators.
+
 `--framework` accepts an exact recorded target name, a TFM, or a TFM/RID such as
 `net10.0/linux-x64`. If an artifact has more than one matching target, selection is required.
 The `why` command takes the dependency first and shows one deterministic shortest path,

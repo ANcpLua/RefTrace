@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Globalization;
 using System.Text.Json;
 using RefTrace.Core;
 using RefTrace.Runtime;
@@ -148,7 +149,7 @@ public static partial class CliApplication
         var publishRid = new Option<string>("--rid") { Required = true, Description = "Runtime identifier, for example osx-arm64." };
         var publishOutput = new Option<string>("--output") { Required = true, Description = "Dedicated directory for native output, intermediate artifacts and the log." };
         var publishFramework = new Option<string>("--framework", "-f") { Description = "Explicit target framework for a multi-targeted project." };
-        var publishTimeout = new Option<double>("--timeout") { DefaultValueFactory = _ => 300, Description = "Timeout in seconds (maximum 1800)." };
+        var publishTimeout = SecondsOption("--timeout", 300, "Timeout in seconds (maximum 1800).");
         var dotnet = new Option<string>("--dotnet") { DefaultValueFactory = _ => "dotnet", Description = "dotnet executable; arguments are passed without a shell." };
         publish.Arguments.Add(publishProject);
         publish.Options.Add(publishRid);
@@ -200,8 +201,8 @@ public static partial class CliApplication
 
         var runtime = new Command("runtime", "Observe loaded assemblies.");
         var pid = new Option<int>("--pid") { Required = true, Description = "Target process ID, from ref processes." };
-        var seconds = new Option<double>("--seconds") { DefaultValueFactory = _ => 1, Description = "Observation window, 0.1–30 seconds." };
-        var timeout = new Option<double>("--timeout") { DefaultValueFactory = _ => 30, Description = "Total timeout including rundown, in seconds (maximum 300)." };
+        var seconds = SecondsOption("--seconds", 1, "Observation window, 0.1–30 seconds.");
+        var timeout = SecondsOption("--timeout", 30, "Total timeout including rundown, in seconds (maximum 300).");
         var modules = new Option<bool>("--modules") { Description = "Show recorded IL/native module paths in terminal output." };
         runtime.Options.Add(pid);
         runtime.Options.Add(seconds);
@@ -249,6 +250,23 @@ public static partial class CliApplication
 
     internal const string AnalyzerAssetsNotRecorded =
         "Analyzer assets: not recorded. The restore did not set RestoreEnableAnalyzerAssets.";
+
+    private static Option<double> SecondsOption(string name, double defaultSeconds, string description) => new(name)
+    {
+        Description = description,
+        DefaultValueFactory = _ => defaultSeconds,
+        CustomParser = result =>
+        {
+            var text = result.Tokens[0].Value;
+            var parsed = double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds)
+                || double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out seconds);
+            if (parsed && Math.Abs(seconds) < TimeSpan.MaxValue.TotalSeconds)
+                return seconds;
+
+            result.AddError($"Invalid duration '{text}' for {name}. Specify seconds without digit grouping.");
+            return default;
+        }
+    };
 
     private static (Command Command, Argument<string> File, Option<string> Target) GraphCommand(string name, string description, Argument? leading = null)
     {

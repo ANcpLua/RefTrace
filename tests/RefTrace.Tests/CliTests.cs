@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using RefTrace.Cli;
 
@@ -247,6 +248,61 @@ public sealed class CliTests(TestContext context)
         Assert.AreEqual(2, result.Exit);
         using var json = JsonDocument.Parse(result.Output);
         Assert.Contains("--seconds", json.RootElement.GetProperty("data").GetProperty("message").GetString()!);
+    }
+
+    [TestMethod]
+    [DataRow("29.5", "29")]
+    [DataRow("29,5", "29")]
+    [DataRow("1", "0.5")]
+    [DataRow("1", "0,5")]
+    [DataRow("0.25", "0,25")]
+    [DataRow("0,25", "0.25")]
+    public async Task Runtime_AustrianDecimalDurationsApplyTheTimeoutComparison(string seconds, string timeout)
+    {
+        await AssertAustrianDurationErrorAsync("--timeout must exceed --seconds",
+            "runtime", "--pid", "2147483647", "--seconds", seconds, "--timeout", timeout, "--json");
+    }
+
+    [TestMethod]
+    [DataRow("1799.5")]
+    [DataRow("1799,5")]
+    public async Task AotPublish_AustrianDecimalTimeoutBelowLimitReachesOutputValidation(string timeout)
+    {
+        var project = Path.Combine(context.TestTempDirectory!, "Fixture.csproj");
+        await File.WriteAllTextAsync(project, "<Project/>", context.CancellationToken);
+        await AssertAustrianDurationErrorAsync("Use a separate output directory",
+            "aot", "publish", project, "--rid", "osx-arm64", "--output", Path.GetDirectoryName(project)!,
+            "--timeout", timeout, "--json");
+    }
+
+    [TestMethod]
+    [DataRow("--seconds", "1.2,3")]
+    [DataRow("--timeout", "1,2,3")]
+    [DataRow("--timeout", "1e99")]
+    public async Task Runtime_AustrianInvalidDurationNamesTheOptionInJson(string option, string value)
+    {
+        await AssertAustrianDurationErrorAsync(option, "runtime", "--pid", "0", option, value, "--json");
+    }
+
+    private async Task AssertAustrianDurationErrorAsync(string messageFragment, params string[] args)
+    {
+        var previous = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-AT");
+            var result = await RunAsync(args);
+            Assert.AreEqual(2, result.Exit);
+            Assert.AreEqual("", result.Error);
+            using var json = JsonDocument.Parse(result.Output);
+            Assert.AreEqual("error", json.RootElement.GetProperty("kind").GetString());
+            var data = json.RootElement.GetProperty("data");
+            Assert.AreEqual("invalid-argument", data.GetProperty("code").GetString());
+            Assert.Contains(messageFragment, data.GetProperty("message").GetString()!);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
     }
 
     [TestMethod]
