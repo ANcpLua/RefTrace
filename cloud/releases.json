@@ -1,9 +1,9 @@
 {
   "receipts": {
     "debug-trace": {
-      "release_id": "pluginrel_6b0a010cae188191aef942c481762dc2",
-      "version": "1.0.1",
-      "sha256": "c13d2457e8002d3fa37beb000eee602c3a63dbe0437a4fab8e4bb11c78e8f840"
+      "release_id": "pluginrel_6b0a20b3abb88191ac34fcd49c26fec9",
+      "version": "1.0.2",
+      "sha256": "a7c6723dc52a014aa321284dc20c2b636cfa25804022bf882e29ae773289ee1e"
     }
   }
 }
