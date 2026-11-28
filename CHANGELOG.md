@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.12.1
+
+* Reuse the dependency graph index and shortest-path search across matches in one `ref check` run.
+  Overlapping policies retain each matching rule and its deterministic evidence path.
+
 ## 0.12.0
 
 * Add `ref update` and `ref --update` to update the running .NET tool installation. See
