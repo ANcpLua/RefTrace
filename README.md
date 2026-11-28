@@ -113,6 +113,9 @@ repository is also its plugin marketplace.
 - In Codex, symlink `plugins/debug-trace/skills/debug-trace` from your checkout to
   `~/.agents/skills/debug-trace`. Updating that checkout updates the linked skill.
 
+The maintainer’s Mac publisher records each verified release of the private ChatGPT `debug-trace` plugin in
+`cloud/releases.json`. The plugin and the RefTrace NuGet tool have independent version numbers.
+
 ## Examples
 
 Find a dependency:

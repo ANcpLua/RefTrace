@@ -27,6 +27,8 @@ When asked to upgrade RefTrace 0.12.0 or later, use `update` through the same co
 | Which SDK was selected? | `ref sdk <directory> --json` | The .NET SDK selected in that directory. This can succeed in a pure Node or Python project. |
 | Will Native AOT publish succeed? | `ref aot inspect <dll> --json` for static findings. | Static inspection reports `not-established`. To test the requested configuration, `ref aot publish <app.csproj> --rid <rid> --output <dir> --json` runs a real publish. |
 
+For a missing .NET analyzer diagnostic, run `ref packages <project> --package '<package>' --assets --json`. If `data.analyzerAssetsRecorded` is false, refresh the evidence with `dotnet restore <project> --force -p:RestoreEnableAnalyzerAssets=true` and repeat the query. When it is true, `analyzerAssets` lists the paths NuGet recorded for that package and target. Check the `Csc` task's `Analyzers` in the failing build's MSBuild binary log to see which DLLs reached the compiler.
+
 For graph queries, pass the relevant `.csproj`, `.fsproj`, `.vbproj`, or restored `project.assets.json`. On `ambiguous-target`, select the intended target from `data.candidates` with `--framework`. On `restore-required`, restore the selected project if current dependency evidence is needed, then retry.
 
 Read the exit status alongside `schemaVersion`, `kind`, and `data`. In schema 2, exit 1 has a command-specific meaning, such as an absent path for `why`. Exit 2 is inconclusive, even when a partial runtime report contains assemblies. `diagnostics-unavailable` means the endpoint could not be used. Report the artifact, target, or observation window that supports the finding.
