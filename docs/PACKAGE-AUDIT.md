@@ -18,7 +18,8 @@ The Python collector and default probes ship in the tool package. It requires **
 Python 3.14** already installed; review does not download a Python interpreter or install
 Python packages. Only configured decompilation probes need **ilspycmd** on PATH. There
 are no third-party Python dependencies. The source checkout uses `uv.lock` for its test
-environment. `make audit` and `make audit-catalog` build and run the same command locally.
+environment. `make audit` and `make audit-catalog` restore this solution and run the same command
+with the RefTrace release pinned in `dotnet-tools.json`.
 
 Each run writes a new directory under the input's `artifacts/.package-audit/`, or the new
 folder supplied with `--output`. The evidence contains unpacked packages, decompiled types and

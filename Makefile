@@ -9,10 +9,10 @@ restore:
 test: build
 	@set -eu; mkdir -p artifacts; results=$$(mktemp -d artifacts/test-results.XXXXXX); \
 	$(DOTNET) test --solution RefTrace.slnx -c Release --no-build --report-trx --results-directory "$$results" "-bl:artifacts/test-{}.binlog"
-audit: build
-	$(DOTNET) run --project src/RefTrace.Cli -c Release --no-build -- review RefTrace.slnx
-audit-catalog: build
-	$(DOTNET) run --project src/RefTrace.Cli -c Release --no-build -- review RefTrace.slnx --catalog-only
+audit: restore tools
+	$(DOTNET) tool run ref -- review RefTrace.slnx
+audit-catalog: restore tools
+	$(DOTNET) tool run ref -- review RefTrace.slnx --catalog-only
 audit-test:
 	$(UV) run --frozen python -m unittest discover -s tooling/tests -v
 tools:

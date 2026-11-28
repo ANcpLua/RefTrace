@@ -293,6 +293,9 @@ dotnet test --solution RefTrace.slnx -c Release --report-trx
 dotnet run --project src/RefTrace.Cli -- --help
 ```
 
+`dotnet run --project src/RefTrace.Cli -- …` runs the code in the working tree. `dotnet tool run ref` runs the
+release pinned in `dotnet-tools.json`, not your changes; `make audit` uses it to review this repository's packages.
+
 Layout:
 
 * `RefTrace.Model`: typed reports, graph queries and policies; no package dependencies.

@@ -34,7 +34,9 @@ so the repository stores no long-lived NuGet API key.
 ## Release a version
 
 1. **Version.** `Directory.Build.props` carries the version, `CHANGELOG.md` has its section, and the `version`
-   default in `publish.yml` matches. Each release needs a new version.
+   default in `publish.yml` matches. Each release needs a new version. Leave the `reftrace` pin in
+   `dotnet-tools.json` at the previous release: CI restores that manifest, and NuGet lists the new version only
+   after step 4.
 2. **Try the product.** On the commit you want to release, pack the tool, install it from the local package as
    [Package and try locally](REFERENCE.md#package-and-try-locally) shows, and run the commands of the README with
    it. A green CI run does not replace this check. If you find a problem, fix it and start again with the new
@@ -60,6 +62,8 @@ so the repository stores no long-lived NuGet API key.
    ```
 7. **Install it.** `dotnet tool update --global RefTrace`, then `ref version` prints the version and the released
    commit.
+8. **Raise the pin.** In its own commit on `main`, run `dotnet tool update --local RefTrace --version <version>` and
+   push the changed `dotnet-tools.json`, so `make audit` reviews with the new release.
 
 A version with a suffix such as `-preview.1` is a prerelease: add `--prerelease` to `gh release create` and to the
 `dotnet tool` commands.
