@@ -4,7 +4,16 @@
   "tools": {
     "jetbrains.resharper.globaltools": {
       "version": "2026.3.0.2",
-      "commands": ["jb"],
+      "commands": [
+        "jb"
+      ],
+      "rollForward": false
+    },
+    "reftrace": {
+      "version": "0.12.1",
+      "commands": [
+        "ref"
+      ],
       "rollForward": false
     }
   }
